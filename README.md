@@ -15,15 +15,15 @@ The artifact includes all components described in the paper's Open Science secti
 
 | Component | Location | Description |
 |---|---|---|
-| Format & parser generation | `src/agent/`, `src/doc_graph/`, `main.py` | LLM-driven generation of initial 3D format specifications and Python parsers from RFC documents |
-| Adversarial refinement loop | `src/refine/`, `src/encode/`, `src/fsm/`, `src/hybrid_fuzz/` | Automated test-case generation, verification against EverParse, and counterexample-driven LLM refinement |
-| Three optimizations | `main.py` (flags `--disable-opt-i/ii/iii`) | Path-cover optimization, constraint-negation pruning, and instrumentation-based slicing |
+| Format & parser generation | `src/agent/`, `src/doc_graph/`, `main.py` | LLM-driven generation of initial 3D format specifications and Python parsers from RFC documents, borrowed from ParCleanse |
+| Adversarial refinement loop | `src/refine/`, `src/encode/`, `src/fsm/`, `src/hybrid_fuzz/` | Automated test-case generation, and adversarial refinement |
+| Three optimizations | `main.py` (flags `--disable-opt-i/ii/iii`) | Path-cover optimization, linear constraint negation, and slicing-based RFC section tracing |
 | RFC documents | `data/RFC/` | 8 protocol RFC texts used as input to the pipeline |
 | Ground-truth specifications | `data/ground_truths/` | 15 hand-written reference `.3d` specifications for evaluation |
-| Pre-computed results | `data/packaged_results/` | Generated outputs for all 8 RFC-backed protocols, enabling offline evaluation |
-| Setup & evaluation scripts | `scripts/` | `setup_everparse.sh` for environment setup, `run_eval.sh` for API-free offline evaluation |
+| Pre-computed results | `data/packaged_results/` | Generated outputs for all 8 RFC-backed protocols |
+| Setup & evaluation scripts | `scripts/` | `setup_everparse.sh` for setting up everparse, `run_eval.sh` for API-free offline evaluation |
 
-The vulnerability detection and testing harness is excluded due to ethical considerations discussed in the paper. This module is not a primary contribution; the core advances in adversarial refinement are fully present and exercisable in the released artifact.
+The vulnerability detection and testing harness is excluded due to ethical considerations discussed in the paper.
 
 Repository Structure
 ---
@@ -153,7 +153,7 @@ uv run python main.py \
   --data-directory data/
 ```
 
-The pipeline builds a document graph from the RFC, generates an initial format and parser via the LLM, then enters a refinement loop: the verifier tests the parser against generated test cases, and counterexamples drive the LLM to fix discovered bugs until no failures remain. Generated artifacts (format, parser, cost/runtime summary) are written under `<data-directory>/packaged_results/`.
+The pipeline builds a document graph from the RFC, generates an initial format and parser via the LLM, then enters a refinement loop: the verifier tests the parser against generated test cases, and counterexamples drive the LLM to fix discovered bugs until no failures remain. Generated artifacts (format, parser, and document graph) are written under `<data-directory>/packaged_results/`.
 
 ### Optimization Flags
 
