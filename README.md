@@ -9,6 +9,21 @@ Built on [EverParse](https://github.com/project-everest/everparse) (verifier), [
 
 **Artifact Claim**: The tool can automatically produce a precise protocol format specification from an RFC. This artifact demonstrates the BFD protocol generation and verification. Evaluators can run `main.py` on BFD and then use `eval_3d.py` to check the structural match against the ground truth. Due to the inconsistencies introduced by LLM providers and LLM models themselves, the artifact focuses on demonstrating the end-to-end workflow and providing a framework for evaluation, rather than guaranteeing exact numeric reproduction of paper results.
 
+### Open Science
+
+The artifact includes all components described in the paper's Open Science section:
+
+| Component | Location | Description |
+|---|---|---|
+| Format & parser generation | `src/agent/`, `src/doc_graph/`, `main.py` | LLM-driven generation of initial 3D format specifications and Python parsers from RFC documents |
+| Adversarial refinement loop | `src/refine/`, `src/encode/`, `src/fsm/`, `src/hybrid_fuzz/` | Automated test-case generation, verification against EverParse, and counterexample-driven LLM refinement |
+| Three optimizations | `main.py` (flags `--disable-opt-i/ii/iii`) | Path-cover optimization, constraint-negation pruning, and instrumentation-based slicing |
+| RFC documents | `data/RFC/` | 8 protocol RFC texts used as input to the pipeline |
+| Ground-truth specifications | `data/ground_truths/` | 15 hand-written reference `.3d` specifications for evaluation |
+| Pre-computed results | `data/packaged_results/` | Generated outputs for all 8 RFC-backed protocols, enabling offline evaluation |
+| Setup & evaluation scripts | `scripts/` | `setup_everparse.sh` for environment setup, `run_eval.sh` for API-free offline evaluation |
+
+The vulnerability detection and testing harness is excluded due to ethical considerations discussed in the paper. This module is not a primary contribution; the core advances in adversarial refinement are fully present and exercisable in the released artifact.
 
 Repository Structure
 ---
