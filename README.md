@@ -110,7 +110,7 @@ System Requirements
 - **Storage**: ~500MB for dependencies and generated artifacts.
 - **Network**: Required for LLM API calls and `uv sync`. If using pre-computed outputs, network access is not needed for LLM interactions.
 - **API Access**: An API key for a supported LLM provider is required to run the full pipeline. See Configuration below.
-- **Runtime**: BFD example takes 5~20 minutes depending on LLM response times and adversarial interaction rounds. Full ablation suite takes around 6~8 hours.
+- **Runtime**: BFD example takes 5 to 20 minutes depending on LLM response times and adversarial interaction rounds. Full ablation suite takes around 6 to 8 hours.
 
 Configuration
 ---
@@ -147,8 +147,8 @@ Three optimizations are **enabled by default**. Each can be turned off individua
 | Flag | Effect |
 |---|---|
 | `--disable-opt-i` | Disable path-cover optimization (test all paths exhaustively) |
-| `--disable-opt-ii` | Disable constraint-negation pruning (explore all constraint combinations) |
-| `--disable-opt-iii` | Disable instrumentation-based slicing (fall back to FSM-diff based refinement) |
+| `--disable-opt-ii` | Disable linear constraint negation (explore all constraint combinations) |
+| `--disable-opt-iii` | Disable slicing-based RFC section lookup (fall back to FSM-diff based lookup) |
 
 ### Ablation Studies
 
@@ -157,7 +157,7 @@ Three optimizations are **enabled by default**. Each can be turned off individua
 | `--run-wo-rfc` | Ablation 1 | Generate format and parser **without** the RFC text, using only the protocol name and DSL syntax reference |
 | `--disable-opt-i` | Ablation 2 | Run with Optimization I disabled (full path enumeration instead of path cover) |
 | `--disable-opt-ii` | Ablation 3 | Run with Optimization II disabled (exhaustive constraint-negation exploration) |
-| `--disable-opt-iii` | Ablation 4 | Run with Optimization III disabled (FSM-diff fallback instead of instrumentation-guided slicing) |
+| `--disable-opt-iii` | Ablation 4 | Run with Optimization III disabled (FSM-diff fallback instead of slicing-guided) |
 
 Ablation 1 is a standalone run (`--run-wo-rfc` skips the normal refinement pipeline entirely). Ablations 2–4 are the optimization flags above, reused as ablation conditions to measure each optimization's contribution.
 
