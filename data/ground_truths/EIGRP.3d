@@ -1,0 +1,348 @@
+
+
+// --------------------
+// 6.7 General TLV Type
+// --------------------
+
+// 6.7.1 0x0001 - PARAMETER_TYPE
+typedef struct _PARAMETER_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 0 && Typelow == 1) {
+  UINT16BE Length { Length == 0x000C };
+  UINT8BE K1;
+  UINT8BE K2;
+  UINT8BE K3;
+  UINT8BE K4;
+  UINT8BE K5;
+  UINT8BE K6;
+  UINT16BE HoldTime;
+} PARAMETER_TYPE;
+
+// 6.7.2 0x0002 - AUTHENTICATION_TYPE
+typedef struct _AUTHENTICATION_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 0 && Typelow == 2) {
+  UINT16BE Length { Length >= 6 };
+  UINT8BE AuthenticationType { AuthenticationType == 2 || AuthenticationType == 3 };
+  UINT8BE AuthenticationLength { AuthenticationLength == Length - 6};
+  UINT8BE AuthenticationData[:byte-size AuthenticationLength];
+} AUTHENTICATION_TYPE;
+
+
+typedef struct _SEQUENCE_TYPE_Address {
+  UINT8BE AddressLength { AddressLength == 4 || AddressLength == 16 || AddressLength == 10 };
+  UINT8BE ProtocolAddress[:byte-size AddressLength];
+} SEQUENCE_TYPE_Address;
+
+// 6.7.3 0x0003 - SEQUENCE_TYPE
+typedef struct _SEQUENCE_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 0 && Typelow == 3) {
+  UINT16BE Length { Length >= 4 } ;
+  SEQUENCE_TYPE_Address Addresses[:byte-size (Length - 4)];
+} SEQUENCE_TYPE;
+
+// 6.7.4 0x0004 - SOFTWARE_VERSION_TYPE
+typedef struct _SOFTWARE_VERSION_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 0 && Typelow == 4) {
+  UINT16BE Length { Length == 0x000C };
+  UINT8BE VendorMajorVersion; // TODO
+  UINT8BE VendorMinorVersion;
+  UINT8BE EIGRPMajorRevision;
+  UINT8BE EIGRPMinorRevision;
+} SOFTWARE_VERSION_TYPE;
+
+// 6.7.5 0x0005 - MULTICAST_SEQUENCE_TYPE
+typedef struct _MULTICAST_SEQUENCE_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 0 && Typelow == 5) {
+  UINT16BE Length { Length == 8 };
+  UINT32BE SequenceNumber;
+} MULTICAST_SEQUENCE_TYPE;
+
+// 6.7.6 0x0006 - PEER_INFORMATION_TYPE (保留)
+// 6.7.7 0x0007 - PEER_TERMINATION_TYPE
+typedef struct _PEER_TERMINATION_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 0 && Typelow == 7) {
+  UINT16BE Length { Length >= 4};
+  UINT8BE AddressList[:byte-size (Length - 4)];
+} PEER_TERMINATION_TYPE;
+
+// 6.7.8 0x0008 - TID_LIST_TYPE
+typedef struct _TID_LIST_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 0 && Typelow == 8) {
+  UINT16BE Length { Length >= 4 };
+  UINT8BE TopologyIdentificationList[:byte-size (Length - 4)];
+} TID_LIST_TYPE;
+
+casetype _GeneralTLVType(UINT8BE Typehigh, UINT8BE Typelow) {
+  switch (Typelow) {
+    case 0x01: PARAMETER_TYPE(Typehigh, Typelow) ParameterTLV;
+    case 0x02: AUTHENTICATION_TYPE(Typehigh, Typelow) AuthenticationTLV;
+    case 0x03: SEQUENCE_TYPE(Typehigh, Typelow) SequenceTLV;
+    case 0x04: SOFTWARE_VERSION_TYPE(Typehigh, Typelow) SoftwareVersionTLV;
+    case 0x05: MULTICAST_SEQUENCE_TYPE(Typehigh, Typelow) MulticastSequenceTLV;
+    case 0x07: PEER_TERMINATION_TYPE(Typehigh, Typelow) PeerTerminationTLV;
+    case 0x08: TID_LIST_TYPE(Typehigh, Typelow) TIDListTLV;
+  }
+} GeneralTLVType;
+
+// -------------------
+// 6.8.5 IPv4 TLV Type
+// -------------------
+
+
+// 6.8.5.1 IPv4 INTERNAL_TYPE
+typedef struct _IPv4_INTERNAL_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 1 && Typelow == 2) {
+  UINT16BE Length { Length >= 25 && Length == sizeof(this) + 2};
+  UINT32BE NextHopForwardingAddress;
+
+  // ClassicMetricEncoding, Vector Metric Section
+  UINT32BE ScaledDelay;
+  UINT32BE ScaledBandwidth;
+  UINT32BE MTU: 24;
+  UINT32BE HopCount: 8;
+  UINT8BE Reliability;
+  UINT8BE Load;
+  UINT8BE InternalTag;
+  UINT8BE FlagsField { FlagsField >= 0 && FlagsField <= 2 };
+
+  // ClassicDestinationEncoding, Destination Section
+  UINT8BE SubnetMaskBitCount { SubnetMaskBitCount >= 1 };
+  UINT8BE DestinationAddress[:byte-size ((SubnetMaskBitCount - 1) / 8 + 1)];
+} IPv4_INTERNAL_TYPE;
+
+// 6.8.5.2 IPv4 EXTERNAL_TYPE
+typedef struct _IPv4_EXTERNAL_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 1 && Typelow == 3) {
+  UINT16BE Length { Length >= 44 };
+  UINT32BE NextHopForwardingAddress;
+
+  // ClassicExteriorEncoding, Exterior Section
+  UINT32BE RouterIdentifier;
+  UINT32BE ExternalAutonomousSystemNumber;
+  UINT32BE AdministrativeTag;
+  UINT32BE ExternalProtocolMetric;
+  UINT16BE Reserved;
+  UINT8BE ExternalProtocol;
+  UINT8BE FlagsField { FlagsField >= 0 && FlagsField <= 2 };
+
+  // ClassicMetricEncoding, Vector Metric Section
+  UINT32BE ScaledDelay;
+  UINT32BE ScaledBandwidth;
+  UINT32BE MTU: 24;
+  UINT32BE HopCount: 8;
+  UINT8BE Reliability;
+  UINT8BE Load;
+  UINT8BE InternalTag;
+  UINT8BE FlagsField2 { FlagsField2 >= 0 && FlagsField2 <= 2 };
+
+  // ClassicDestinationEncoding, Destination Section
+  UINT8BE SubnetMaskBitCount { 44 + 1 + (SubnetMaskBitCount + 7) / 8 == Length };
+  UINT8BE DestinationAddress[:byte-size ((SubnetMaskBitCount + 7) / 8)];
+} IPv4_EXTERNAL_TYPE;
+
+// 6.8.5.3 IPv4 COMMUNITY_TYPE
+typedef struct _IPv4_COMMUNITY_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 1 && Typelow == 4) {
+  UINT16BE Length { Length >= 12 };
+  UINT32BE IPv4Destination;
+  UINT16BE Reserved;
+  UINT16BE CommunityLength { CommunityLength >= 1 && CommunityLength == Length - 12 } ;
+  UINT8BE CommunityList[:byte-size CommunityLength];
+} IPv4_COMMUNITY_TYPE;
+
+casetype _IPv4TLVType(UINT8BE Typehigh, UINT8BE Typelow) {
+  switch (Typelow) {
+    case 0x02: IPv4_INTERNAL_TYPE(Typehigh, Typelow) IPv4InternalTLV;
+    case 0x03: IPv4_EXTERNAL_TYPE(Typehigh, Typelow) IPv4ExternalTLV;  
+    case 0x04: IPv4_COMMUNITY_TYPE(Typehigh, Typelow) IPv4CommunityTLV;
+  }
+} IPv4TLVType;
+
+// -------------------
+// 6.8.6 IPv6 TLV Type
+// -------------------
+
+// 6.8.6.1 IPv6 INTERNAL_TYPE
+typedef struct _IPv6_INTERNAL_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 4 && Typelow == 2) {
+  UINT16BE Length { Length >= 36 };
+  UINT64BE NextHopForwardingAddress[:byte-size 16];
+
+  // ClassicMetricEncoding, Vector Metric Section
+  UINT32BE ScaledDelay;
+  UINT32BE ScaledBandwidth;
+  UINT32BE MTU: 24;
+  UINT32BE HopCount: 8;
+  UINT8BE Reliability;
+  UINT8BE Load;
+  UINT8BE InternalTag;
+  UINT8BE FlagsField { FlagsField >= 0 && FlagsField <= 2 };
+  
+  // ClassicDestinationEncoding, Destination Section
+  UINT8BE SubnetMaskBitCount { 36 + 1 + (SubnetMaskBitCount + 7) / 8 == Length };
+  // TODO: what is the meaning of 'x'?
+  UINT8BE DestinationAddress[:byte-size ((SubnetMaskBitCount + 7) / 8)];
+} IPv6_INTERNAL_TYPE;
+
+// 6.8.6.2 IPv6 EXTERNAL_TYPE
+typedef struct _IPv6_EXTERNAL_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 4 && Typelow == 3) {
+  UINT16BE Length { Length >= 56 };
+  UINT64BE NextHopForwardingAddress[:byte-size 16];
+
+  // ClassicExteriorEncoding, Exterior Section
+  UINT32BE RouterIdentifier;
+  UINT32BE ExternalAutonomousSystemNumber;
+  UINT32BE AdministrativeTag;
+  UINT32BE ExternalProtocolMetric;
+  UINT16BE Reserved;
+  UINT8BE ExternalProtocol;
+  UINT8BE FlagsField { FlagsField >= 0 && FlagsField <= 2 };
+
+  // ClassicMetricEncoding, Vector Metric Section
+  UINT32BE ScaledDelay;
+  UINT32BE ScaledBandwidth;
+  UINT32BE MTU: 24;
+  UINT32BE HopCount: 8;
+  UINT8BE Reliability;
+  UINT8BE Load;
+  UINT8BE InternalTag;
+  UINT8BE FlagsField2 { FlagsField2 >= 0 && FlagsField2 <= 2 };
+  
+  // ClassicDestinationEncoding, Destination Section
+  UINT8BE SubnetMaskBitCount { 56 + 1 + (SubnetMaskBitCount + 7) / 8 == Length };
+  // TODO: what is the meaning of 'x'?
+  UINT8BE DestinationAddress[:byte-size ((SubnetMaskBitCount + 7) / 8)];
+} IPv6_EXTERNAL_TYPE;
+
+// 6.8.6.3 IPv6 COMMUNITY_TYPE
+typedef struct _IPv6_COMMUNITY_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 4 && Typelow == 4) {
+  UINT16BE Length { Length >= 24 };
+  UINT64BE IPv6Destination[:byte-size 16];
+  UINT16BE Reserved;
+  UINT16BE CommunityLength { CommunityLength == Length - 24 };
+  UINT8BE CommunityList[:byte-size CommunityLength];
+} IPv6_COMMUNITY_TYPE;
+
+casetype _IPv6TLVType(UINT8BE Typehigh, UINT8BE Typelow) {
+  switch (Typelow) {
+    case 0x02: IPv6_INTERNAL_TYPE(Typehigh, Typelow) IPv6InternalTLV;
+    case 0x03: IPv6_EXTERNAL_TYPE(Typehigh, Typelow) IPv6ExternalTLV;
+    case 0x04: IPv6_COMMUNITY_TYPE(Typehigh, Typelow) IPv6CommunityTLV;
+  }
+} IPv6TLVType;
+
+
+// --------------------------
+// 6.9 Multiprotocol TLV Type
+// --------------------------
+
+typedef struct _MULTIPROTOCOL_REQUEST_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 6 && Typelow == 1) {
+  // TLV Header Encoding (excluding Typehigh & Typelow)
+  UINT16BE Length { Length >= 12 };
+  UINT16BE AFI;
+  UINT16BE TID;
+  UINT32BE RouterIdentifier;
+  UINT8BE Value[:byte-size (Length - 12)];
+
+  // WideMetricEncoding
+  UINT8BE Offset;
+  UINT8BE Priority;
+  UINT8BE Reliability;
+  UINT8BE Load;
+  UINT32BE MTU: 24;
+  UINT32BE HopCount: 8;
+  UINT16BE Delay[:byte-size 6];
+  UINT16BE Bandwidth[:byte-size 6];
+  UINT16BE Reserved { Reserved == 0 };
+  UINT16BE OpaqueFlags { OpaqueFlags == 1 || OpaqueFlags == 2 || OpaqueFlags == 4 || OpaqueFlags == 8 };
+  // TODO: what is this?
+  UINT16BE ExtendedAttributes[:byte-size (Offset * 2)];
+
+  // Destination Descriptor
+  UINT8BE SubnetMaskBitCount;
+  UINT8BE DestinationAddress[:byte-size ((SubnetMaskBitCount + 7) / 8)];
+} MULTIPROTOCOL_REQUEST_TYPE;
+
+typedef struct _MULTIPROTOCOL_INTERNAL_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 6 && Typelow == 2) {
+  // TLV Header Encoding (excluding Typehigh & Typelow)
+  UINT16BE Length { Length >= 12 };
+  UINT16BE AFI;
+  UINT16BE TID;
+  UINT32BE RouterIdentifier;
+  UINT8BE Value[:byte-size (Length - 12)];
+
+  // WideMetricEncoding
+  UINT8BE Offset;
+  UINT8BE Priority;
+  UINT8BE Reliability;
+  UINT8BE Load;
+  UINT32BE MTU: 24;
+  UINT32BE HopCount: 8;
+  UINT16BE Delay[:byte-size 6];
+  UINT16BE Bandwidth[:byte-size 6];
+  UINT16BE Reserved { Reserved == 0 };
+  UINT16BE OpaqueFlags { OpaqueFlags == 1 || OpaqueFlags == 2 || OpaqueFlags == 4 || OpaqueFlags == 8 };
+  // TODO: what is this?
+  UINT16BE ExtendedAttributes[:byte-size (Offset * 2)];
+
+  // Destination Descriptor
+  UINT8BE SubnetMaskBitCount;
+  UINT8BE DestinationAddress[:byte-size ((SubnetMaskBitCount + 7) / 8)];
+} MULTIPROTOCOL_INTERNAL_TYPE;
+
+typedef struct _MULTIPROTOCOL_EXTERNAL_TYPE(UINT8BE Typehigh, UINT8BE Typelow) where (Typehigh == 6 && Typelow == 3) {
+  // TLV Header Encoding (excluding Typehigh & Typelow)
+  UINT16BE Length { Length >= 12 };
+  UINT16BE AFI;
+  UINT16BE TID;
+  UINT32BE RouterIdentifier;
+  UINT8BE Value[:byte-size (Length - 12)];
+
+  // WideMetricEncoding
+  UINT8BE Offset;
+  UINT8BE Priority;
+  UINT8BE Reliability;
+  UINT8BE Load;
+  UINT32BE MTU: 24;
+  UINT32BE HopCount: 8;
+  UINT16BE Delay[:byte-size 6];
+  UINT16BE Bandwidth[:byte-size 6];
+  UINT16BE Reserved { Reserved == 0 };
+  UINT16BE OpaqueFlags { OpaqueFlags == 1 || OpaqueFlags == 2 || OpaqueFlags == 4 || OpaqueFlags == 8 };
+  // TODO: what is this?
+  UINT16BE ExtendedAttributes[:byte-size (Offset * 2)];
+
+  // Destination Descriptor
+  UINT8BE SubnetMaskBitCount;
+  UINT8BE DestinationAddress[:byte-size ((SubnetMaskBitCount + 7) / 8)];
+} MULTIPROTOCOL_EXTERNAL_TYPE;
+
+casetype _MultiprotocolTLVType(UINT8BE Typehigh, UINT8BE Typelow) {
+  switch (Typelow) {
+    case 0x01: MULTIPROTOCOL_REQUEST_TYPE(Typehigh, Typelow) MultiprotocolRequestTLV;
+    case 0x02: MULTIPROTOCOL_INTERNAL_TYPE(Typehigh, Typelow) MultiprotocolInternalTLV;
+    case 0x03: MULTIPROTOCOL_EXTERNAL_TYPE(Typehigh, Typelow) MultiprotocolExternalTLV;
+  }
+} MultiprotocolTLVType;
+
+// ---------
+// EIGRP TLV
+// ---------
+casetype _EIGRPTLVVariaint(UINT8BE Typehigh, UINT8BE Typelow) {
+  switch (Typehigh) {
+    case 0x00: GeneralTLVType(Typehigh, Typelow) GeneralTLV;
+    case 0x01: IPv4TLVType(Typehigh, Typelow) IPv4TLV;
+    case 0x04: IPv6TLVType(Typehigh, Typelow) IPv6TLV;
+    case 0x06: MultiprotocolTLVType(Typehigh, Typelow) MultiprotocolTLV;
+  }
+} EIGRPTLVVariaint;
+
+typedef struct _EIGRPTLV {
+  UINT8BE Typehigh { Typehigh == 0 || Typehigh == 1 || Typehigh == 4 || Typehigh == 5 || Typehigh == 6 };
+  UINT8BE Typelow;
+  EIGRPTLVVariaint(Typehigh, Typelow) Value;
+} EIGRPTLV;
+
+typedef struct _EIGRPHeader {
+    UINT8BE HeaderVersion {HeaderVersion == 2}; // Must be 2
+    UINT8BE Opcode { Opcode >= 1 && Opcode <= 11 };
+    UINT16BE Checksum;
+    UINT32BE Flags { Flags == 1 || Flags == 2 || Flags == 4 || Flags == 8 };
+    UINT32BE SequenceNumber;
+    UINT32BE AcknowledgementNumber;
+    UINT16BE VirtualRouterID;
+    UINT16BE AutonomousSystemNumber { AutonomousSystemNumber >= 1 && AutonomousSystemNumber <= 65535};
+} EIGRPHeader;
+
+entrypoint typedef struct _EIGRPPacket(UINT16BE total_length) where (total_length >= 40)  {
+  EIGRPHeader Header;
+  EIGRPTLV TLVs[:byte-size (total_length - 40)];
+} EIGRPPacket;

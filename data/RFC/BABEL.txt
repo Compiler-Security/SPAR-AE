@@ -1,0 +1,695 @@
+4. BABEL Packet Format
+
+4.1.3.  Router-Id
+
+   A router-id is an arbitrary 8-octet value.  A router-id MUST NOT
+   consist of either all binary zeroes (0000000000000000 hexadecimal) or
+   all binary ones (FFFFFFFFFFFFFFFF hexadecimal).
+
+4.1.4.  Address
+
+   Since the bulk of the protocol is taken by addresses, multiple ways
+   of encoding addresses are defined.  Additionally, within Update TLVs
+   a common subnet prefix may be omitted when multiple addresses are
+   sent in a single packet -- this is known as address compression
+   (Section 4.6.9).
+
+   Address encodings (AEs):
+
+   AE 0:     Wildcard address.  The value is 0 octets long.
+
+   AE 1:     IPv4 address.  Compression is allowed.  4 octets or less.
+
+   AE 2:     IPv6 address.  Compression is allowed.  16 octets or less.
+
+   AE 3:     Link-local IPv6 address.  Compression is not allowed.  The
+             value is 8 octets long, a prefix of fe80::/64 is implied.
+
+   The address family associated with an address encoding is either IPv4
+   or IPv6: it is undefined for AE 0, IPv4 for AE 1, and IPv6 for AEs 2
+   and 3.
+
+4.2.  General Packet Format
+
+   A Babel packet consists of a 4-octet header, followed by a sequence
+   of TLVs (the packet body), optionally followed by a second sequence
+   of TLVs (the packet trailer).  The format is designed to be
+   extensible; see Appendix D for extensibility considerations.
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Magic     |    Version    |        Body length            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Packet Body...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+   |         Packet Trailer...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields:
+
+   Magic     The arbitrary but carefully chosen value 42 (decimal);
+             packets with a first octet different from 42 MUST be
+             silently ignored.
+
+   Version   This document specifies version 2 of the Babel protocol.
+             Packets with a second octet different from 2 MUST be
+             silently ignored.
+
+   Body length  The length in octets of the body following the packet
+             header (excluding the Magic, Version, and Body length
+             fields, and excluding the packet trailer).
+
+   Packet Body  The packet body; a sequence of TLVs.
+
+   Packet Trailer  The packet trailer; another sequence of TLVs.
+
+   The packet body and trailer are both sequences of TLVs.  The packet
+   body is the normal place to store TLVs; the packet trailer only
+   contains specialised TLVs that do not need to be protected by
+   cryptographic security mechanisms.  When parsing the trailer, the
+   receiver MUST ignore any TLV unless its definition explicitly states
+   that it is allowed to appear there.  Among the TLVs defined in this
+   document, only Pad1 and PadN are allowed in the trailer; since these
+   TLVs are ignored in any case, an implementation MAY silently ignore
+   the packet trailer without even parsing it, unless it implements at
+   least one protocol extension that defines TLVs that are allowed to
+   appear in the trailer.
+
+4.3.  TLV Format
+
+   With the exception of Pad1, all TLVs have the following structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Type      |    Length     |     Payload...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields:
+
+   Type      The type of the TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   Payload   The TLV payload, which consists of a body and, for selected
+             TLV types, an optional list of sub-TLVs.
+
+   TLVs with an unknown type value MUST be silently ignored.
+
+4.4.  Sub-TLV Format
+
+   Every TLV carries an explicit length in its header; however, most
+   TLVs are self-terminating, in the sense that it is possible to
+   determine the length of the body without reference to the explicit
+   Length field.  If a TLV has a self-terminating format, then the space
+   between the natural size of the TLV and the size announced in the
+   Length field may be used to store a sequence of sub-TLVs.
+
+   Sub-TLVs have the same structure as TLVs.  With the exception of
+   Pad1, all TLVs have the following structure:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Type      |    Length     |     Body...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields:
+
+   Type      The type of the sub-TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   Body      The sub-TLV body, the interpretation of which depends on
+             both the type of the sub-TLV and the type of the TLV within
+             which it is embedded.
+
+   The most significant bit of the sub-TLV type (the bit with value 80
+   hexadecimal), is called the mandatory bit; in other words, sub-TLV
+   types 128 through 255 have the mandatory bit set.  This bit indicates
+   how to handle unknown sub-TLVs.  If the mandatory bit is not set,
+   then an unknown sub-TLV MUST be silently ignored, and the rest of the
+   TLV is processed normally.  If the mandatory bit is set, then the
+   whole enclosing TLV MUST be silently ignored (except for updating the
+   parser state by a Router-Id, Next Hop, or Update TLV, as described in
+   the next section).
+
+4.6.  Details of Specific TLVs
+
+4.6.1.  Pad1
+
+    0
+    0 1 2 3 4 5 6 7
+   +-+-+-+-+-+-+-+-+
+   |   Type = 0    |
+   +-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   Type      Set to 0 to indicate a Pad1 TLV.
+
+   This TLV is silently ignored on reception.  It is allowed in the
+   packet trailer.
+
+4.6.2.  PadN
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 1   |    Length     |      MBZ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields:
+
+   Type      Set to 1 to indicate a PadN TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   MBZ       Must be zero, set to 0 on transmission.
+
+   This TLV is silently ignored on reception.  It is allowed in the
+   packet trailer.
+
+4.6.3.  Acknowledgment Request
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 2   |    Length     |          Reserved             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |             Opaque            |          Interval             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   This TLV requests that the receiver send an Acknowledgment TLV within
+   the number of centiseconds specified by the Interval field.
+
+   Fields:
+
+   Type      Set to 2 to indicate an Acknowledgment Request TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   Reserved  Sent as 0 and MUST be ignored on reception.
+
+   Opaque    An arbitrary value that will be echoed in the receiver's
+             Acknowledgment TLV.
+
+   Interval  A time interval in centiseconds after which the sender will
+             assume that this packet has been lost.  This MUST NOT be 0.
+             The receiver MUST send an Acknowledgment TLV before this
+             time has elapsed (with a margin allowing for propagation
+             time).
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.6.4.  Acknowledgment
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 3   |    Length     |           Opaque              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   This TLV is sent by a node upon receiving an Acknowledgment Request
+   TLV.
+
+   Fields:
+
+   Type      Set to 3 to indicate an Acknowledgment TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   Opaque    Set to the Opaque value of the Acknowledgment Request that
+             prompted this Acknowledgment.
+
+   Since Opaque values are not globally unique, this TLV MUST be sent to
+   a unicast address.
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.6.5.  Hello
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 4   |    Length     |            Flags              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |            Seqno              |          Interval             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   This TLV is used for neighbour discovery and for determining a
+   neighbour's reception cost.
+
+   Fields:
+
+   Type      Set to 4 to indicate a Hello TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   Flags     The individual bits of this field specify special handling
+             of this TLV (see below).
+
+   Seqno     If the Unicast flag is set, this is the value of the
+             sending node's outgoing Unicast Hello seqno for this
+             neighbour.  Otherwise, it is the sending node's outgoing
+             Multicast Hello seqno for this interface.
+
+   Interval  If nonzero, this is an upper bound, expressed in
+             centiseconds, on the time after which the sending node will
+             send a new scheduled Hello TLV with the same setting of the
+             Unicast flag.  If this is 0, then this Hello represents an
+             unscheduled Hello and doesn't carry any new information
+             about times at which Hellos are sent.
+
+   The Flags field is interpreted as follows:
+
+    0                   1
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |U|X|X|X|X|X|X|X|X|X|X|X|X|X|X|X|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   U (Unicast) flag (8000 hexadecimal):  if set, then this Hello
+             represents a Unicast Hello, otherwise it represents a
+             Multicast Hello;
+
+   X:        all other bits MUST be sent as 0 and silently ignored on
+             reception.
+
+   Every time a Hello is sent, the corresponding seqno counter MUST be
+   incremented.  Since there is a single seqno counter for all the
+   Multicast Hellos sent by a given node over a given interface, if the
+   Unicast flag is not set, this TLV MUST be sent to all neighbours on
+   this link, which can be achieved by sending to a multicast
+   destination or by sending multiple packets to the unicast addresses
+   of all reachable neighbours.  Conversely, if the Unicast flag is set,
+   this TLV MUST be sent to a single neighbour, which can achieved by
+   sending to a unicast destination.  In order to avoid large
+   discontinuities in link quality, multiple Hello TLVs SHOULD NOT be
+   sent in the same packet.
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.6.6.  IHU
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 5   |    Length     |       AE      |    Reserved   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |            Rxcost             |          Interval             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       Address...
+   +-+-+-+-+-+-+-+-+-+-+-+-
+
+   An IHU ("I Heard You") TLV is used for confirming bidirectional
+   reachability and carrying a link's transmission cost.
+
+   Fields:
+
+   Type      Set to 5 to indicate an IHU TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   AE        The encoding of the Address field.  This should be 1 or 3
+             in most cases.  As an optimisation, it MAY be 0 if the TLV
+             is sent to a unicast address, if the association is over a
+             point-to-point link, or when bidirectional reachability is
+             ascertained by means outside of the Babel protocol.
+
+   Reserved  Sent as 0 and MUST be ignored on reception.
+
+   Rxcost    The rxcost according to the sending node of the interface
+             whose address is specified in the Address field.  The value
+             FFFF hexadecimal (infinity) indicates that this interface
+             is unreachable.
+
+   Interval  An upper bound, expressed in centiseconds, on the time
+             after which the sending node will send a new IHU; this MUST
+             NOT be 0.  The receiving node will use this value in order
+             to compute a hold time for this symmetric association.
+
+   Address   The address of the destination node, in the format
+             specified by the AE field.  Address compression is not
+             allowed.
+
+   Conceptually, an IHU is destined to a single neighbour.  However, IHU
+   TLVs contain an explicit destination address, and MAY be sent to a
+   multicast address, as this allows aggregation of IHUs destined to
+   distinct neighbours into a single packet and avoids the need for an
+   ARP or Neighbour Discovery exchange when a neighbour is not being
+   used for data traffic.
+
+   IHU TLVs with an unknown value in the AE field MUST be silently
+   ignored.
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.6.7.  Router-Id
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 6   |    Length     |          Reserved             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   +                           Router-Id                           +
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   A Router-Id TLV establishes a router-id that is implied by subsequent
+   Update TLVs, as described in Section 4.5.  This TLV sets the router-
+   id even if it is otherwise ignored due to an unknown mandatory sub-
+   TLV.
+
+   Fields:
+
+   Type      Set to 6 to indicate a Router-Id TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   Reserved  Sent as 0 and MUST be ignored on reception.
+
+   Router-Id  The router-id for routes advertised in subsequent Update
+             TLVs.  This MUST NOT consist of either all zeroes or all ones .
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.6.8.  Next Hop
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 7   |    Length     |      AE       |   Reserved    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       Next hop...
+   +-+-+-+-+-+-+-+-+-+-+-+-
+
+   A Next Hop TLV establishes a next-hop address for a given address
+   family (IPv4 or IPv6) that is implied in subsequent Update TLVs, as
+   described in Section 4.5.  This TLV sets up the next hop for
+   subsequent Update TLVs even if it is otherwise ignored due to an
+   unknown mandatory sub-TLV.
+
+   Fields:
+
+   Type      Set to 7 to indicate a Next Hop TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   AE        The encoding of the Address field.  This SHOULD be 1 (IPv4)
+             or 3 (link-local IPv6), and MUST NOT be 0.
+
+   Reserved  Sent as 0 and MUST be ignored on reception.
+
+   Next hop  The next-hop address advertised by subsequent Update TLVs
+             for this address family.
+
+   When the address family matches the network-layer protocol over which
+   this packet is transported, a Next Hop TLV is not needed: in the
+   absence of a Next Hop TLV in a given address family, the next-hop
+   address is taken to be the source address of the packet.
+
+   Next Hop TLVs with an unknown value for the AE field MUST be silently
+   ignored.
+
+   This TLV is self-terminating, and allows sub-TLVs.
+
+4.6.9.  Update
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 8   |    Length     |       AE      |    Flags      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Plen      |    Omitted    |            Interval           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |             Seqno             |            Metric             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      Prefix...
+   +-+-+-+-+-+-+-+-+-+-+-+-
+
+   An Update TLV advertises or retracts a route.  As an optimisation, it
+   can optionally have the side effect of establishing a new implied
+   router-id and a new default prefix, as described in Section 4.5.
+
+   Fields:
+
+   Type      Set to 8 to indicate an Update TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   AE        The encoding of the Prefix field.
+
+   Flags     The individual bits of this field specify special handling
+             of this TLV (see below).
+
+   Plen      The length in bits of the advertised prefix.  If AE is 3
+             (link-local IPv6), the Omitted field MUST be 0.
+
+   Omitted   The number of octets that have been omitted at the
+             beginning of the advertised prefix and that should be taken
+             from a preceding Update TLV in the same address family with
+             the Prefix flag set.
+
+   Interval  An upper bound, expressed in centiseconds, on the time
+             after which the sending node will send a new update for
+             this prefix.  This MUST NOT be 0.  The receiving node will
+             use this value to compute a hold time for the route table
+             entry.  The value FFFF hexadecimal (infinity) expresses
+             that this announcement will not be repeated unless a
+             request is received (Section 3.8.2.3).
+
+   Seqno     The originator's sequence number for this update.
+
+   Metric    The sender's metric for this route.  The value FFFF
+             hexadecimal (infinity) means that this is a route
+             retraction.
+
+   Prefix    The prefix being advertised.  This field's size is
+             (Plen/8 - Omitted) rounded upwards.
+
+   The Flags field is interpreted as follows:
+
+    0 1 2 3 4 5 6 7
+   +-+-+-+-+-+-+-+-+
+   |P|R|X|X|X|X|X|X|
+   +-+-+-+-+-+-+-+-+
+
+   P (Prefix) flag (80 hexadecimal):  if set, then this Update TLV
+             establishes a new default prefix for subsequent Update TLVs
+             with a matching address encoding within the same packet,
+             even if this TLV is otherwise ignored due to an unknown
+             mandatory sub-TLV;
+
+   R (Router-Id) flag (40 hexadecimal):  if set, then this TLV
+             establishes a new default router-id for this TLV and
+             subsequent Update TLVs in the same packet, even if this TLV
+             is otherwise ignored due to an unknown mandatory sub-TLV.
+             This router-id is computed from the first address of the
+             advertised prefix as follows:
+
+             *  if the length of the address is 8 octets or more, then
+                the new router-id is taken from the 8 last octets of the
+                address;
+
+             *  if the length of the address is smaller than 8 octets,
+                then the new router-id consists of the required number
+                of zero octets followed by the address, i.e., the
+                address is stored on the right of the router-id.  For
+                example, for an IPv4 address, the router-id consists of
+                4 octets of zeroes followed by the IPv4 address.
+
+   X:        all other bits MUST be sent as 0 and silently ignored on
+             reception.
+
+   The prefix being advertised by an Update TLV is computed as follows:
+
+   *  the first Omitted octets of the prefix are taken from the previous
+      Update TLV with the Prefix flag set and the same address encoding,
+      even if it was ignored due to an unknown mandatory sub-TLV; if the
+      Omitted field is not zero and there is no such TLV, then this
+      Update MUST be ignored;
+
+   *  the next (Plen/8 - Omitted) rounded upwards octets are taken from
+      the Prefix field;
+
+   *  if Plen is not a multiple of 8, then any bits beyond Plen (i.e.,
+      the low-order (8 - Plen MOD 8) bits of the last octet) are
+      cleared;
+
+   *  the remaining octets are set to 0.
+
+   If the Metric field is finite, the router-id of the originating node
+   for this announcement is taken from the prefix advertised by this
+   Update if the Router-Id flag is set, computed as described above.
+   Otherwise, it is taken either from the preceding Router-Id TLV, or
+   the preceding Update TLV with the Router-Id flag set, whichever comes
+   last, even if that TLV is otherwise ignored due to an unknown
+   mandatory sub-TLV; if there is no suitable TLV, then this update is
+   ignored.
+
+   The next-hop address for this update is taken from the last preceding
+   Next Hop TLV with a matching address family (IPv4 or IPv6) in the
+   same packet even if it was otherwise ignored due to an unknown
+   mandatory sub-TLV; if no such TLV exists, it is taken from the
+   network-layer source address of this packet if it belongs to the same
+   address family as the prefix being announced; otherwise, this Update
+   MUST be ignored.
+
+   If the metric field is FFFF hexadecimal, this TLV specifies a
+   retraction.  In that case, the router-id, next hop, and seqno are not
+   used.  AE MAY then be 0, in which case this Update retracts all of
+   the routes previously advertised by the sending interface.  If the
+   metric is finite, AE MUST NOT be 0; Update TLVs with finite metric
+   and AE equal to 0 MUST be ignored.  If the metric is infinite and AE
+   is 0, Plen and Omitted MUST both be 0; Update TLVs that do not
+   satisfy this requirement MUST be ignored.
+
+   Update TLVs with an unknown value in the AE field MUST be silently
+   ignored.
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.6.10.  Route Request
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 9   |    Length     |      AE       |     Plen      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      Prefix...
+   +-+-+-+-+-+-+-+-+-+-+-+-
+
+   A Route Request TLV prompts the receiver to send an update for a
+   given prefix, or a full route table dump.
+
+   Fields:
+
+   Type      Set to 9 to indicate a Route Request TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   AE        The encoding of the Prefix field.  The value 0 specifies
+             that this is a request for a full route table dump (a
+             wildcard request).
+
+   Plen      The length in bits of the requested prefix.
+
+   Prefix    The prefix being requested.  This field's size is Plen/8
+             rounded upwards.
+
+   A Request TLV prompts the receiver to send an update message
+   (possibly a retraction) for the prefix specified by the AE, Plen, and
+   Prefix fields, or a full dump of its route table if AE is 0 (in which
+   case Plen must be 0 and Prefix is of length 0).  A Request TLV with
+   AE set to 0 and Plen not set to 0 MUST be ignored.
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.6.11.  Seqno Request
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 10  |    Length     |      AE       |    Plen       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |             Seqno             |  Hop Count    |   Reserved    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   +                          Router-Id                            +
+   |                                                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Prefix...
+   +-+-+-+-+-+-+-+-+-+-+
+
+   A Seqno Request TLV prompts the receiver to send an Update for a
+   given prefix with a given sequence number, or to forward the request
+   further if it cannot be satisfied locally.
+
+   Fields:
+
+   Type      Set to 10 to indicate a Seqno Request TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   AE        The encoding of the Prefix field.  This MUST NOT be 0.
+
+   Plen      The length in bits of the requested prefix.
+
+   Seqno     The sequence number that is being requested.
+
+   Hop Count  The maximum number of times that this TLV may be
+             forwarded, plus 1.  This MUST NOT be 0.
+
+   Reserved  Sent as 0 and MUST be ignored on reception.
+
+   Router-Id  The Router-Id that is being requested.  This MUST NOT
+             consist of all zeroes or all ones.
+
+   Prefix    The prefix being requested.  This field's size is Plen/8
+             rounded upwards.
+
+   A Seqno Request TLV prompts the receiving node to send a finite-
+   metric Update for the prefix specified by the AE, Plen, and Prefix
+   fields, with either a router-id different from what is specified by
+   the Router-Id field, or a Seqno no less (modulo 2^(16)) than what is
+   specified by the Seqno field.  If this request cannot be satisfied
+   locally, then it is forwarded according to the rules set out in
+   Section 3.8.1.2.
+
+   While a Seqno Request MAY be sent to a multicast address, it MUST NOT
+   be forwarded to a multicast address and MUST NOT be forwarded to more
+   than one neighbour.  A request MUST NOT be forwarded if its Hop Count
+   field is 1.
+
+   This TLV is self-terminating and allows sub-TLVs.
+
+4.7.  Details of specific sub-TLVs
+
+4.7.1.  Pad1
+
+    0 1 2 3 4 5 6 7
+   +-+-+-+-+-+-+-+-+
+   |   Type = 0    |
+   +-+-+-+-+-+-+-+-+
+
+   Fields:
+
+   Type      Set to 0 to indicate a Pad1 sub-TLV.
+
+   This sub-TLV is silently ignored on reception.  It is allowed within
+   any TLV that allows sub-TLVs.
+
+4.7.2.  PadN
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Type = 1   |    Length     |      MBZ...
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+
+   Fields:
+
+   Type      Set to 1 to indicate a PadN sub-TLV.
+
+   Length    The length of the body in octets, exclusive of the Type and
+             Length fields.
+
+   MBZ       Must be zero, set to 0 on transmission.
+
+   This sub-TLV is silently ignored on reception.  It is allowed within
+   any TLV that allows sub-TLVs.

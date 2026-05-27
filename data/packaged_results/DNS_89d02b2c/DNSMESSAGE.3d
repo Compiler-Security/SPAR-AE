@@ -1,0 +1,186 @@
+// Merged DNSMessage format with extended/concrete DNSRR and RData from Snippet 2
+// DomainName, DNSLabel, LastDNSLabel are used for QNAME fields in Question and NAME in DNSRR
+// Only one entrypoint: DNSMessage
+
+// DNSLabel for each label in a domain name
+typedef struct _DNSLabel {
+  UINT8BE Length { Length > 0 && Length <= 63 };
+  UINT8BE LabelData[:byte-size Length];
+} DNSLabel;
+
+// LastDNSLabel for the terminating zero-length label
+typedef struct _LastDNSLabel {
+  UINT8BE Length { Length == 0 };
+} LastDNSLabel;
+
+// DomainName consists of a sequence of DNSLabel entries terminated by LastDNSLabel
+// We use a byte-size array for DNSLabel, up to 253 bytes (maximum domain name length is 255, minus 1 for the zero-length label, minus 1 for the root label)
+typedef struct _DomainName {
+  DNSLabel labels[:byte-size 253]; // sequence of labels, up to 253 bytes
+  LastDNSLabel lastLabel;
+} DomainName;
+
+// CharacterString: length-prefixed, up to 255 bytes of data (length octet + up to 255 bytes)
+typedef struct _CharacterString {
+  UINT8BE Length;
+  UINT8BE Value[:byte-size Length];
+} CharacterString;
+
+// TXT_RDATA: one or more <character-string>s, up to RDLENGTH bytes
+typedef struct _TXT_RDATA(UINT16BE RDLENGTH) where (RDLENGTH <= 65535) {
+  CharacterString TXT_DATA[:byte-size RDLENGTH]; // TXT-DATA is one or more <character-string>s
+} TXT_RDATA;
+
+// NS RDATA: domain name
+typedef struct _NS_RDATA {
+  DomainName NSDNAME;
+} NS_RDATA;
+
+// SOA RDATA: 2 domain names, 5 UINT32BE fields
+typedef struct _SOA_RDATA {
+  DomainName MNAME;
+  DomainName RNAME;
+  UINT32BE SERIAL;
+  UINT32BE REFRESH;
+  UINT32BE RETRY;
+  UINT32BE EXPIRE;
+  UINT32BE MINIMUM;
+} SOA_RDATA;
+
+// CNAME RDATA: domain name
+typedef struct _CNAME_RDATA {
+  DomainName CNAME;
+} CNAME_RDATA;
+
+// PTR RDATA: domain name
+typedef struct _PTR_RDATA {
+  DomainName PTRDNAME;
+} PTR_RDATA;
+
+// MX RDATA: preference and exchange domain name
+typedef struct _MX {
+  UINT16BE PREFERENCE;
+  DomainName EXCHANGE;
+} MX;
+
+typedef struct _MX_RDATA {
+  MX mx;
+} MX_RDATA;
+
+// NULL RDATA: arbitrary data up to 65535 bytes
+typedef struct _NULLRDATA(UINT16BE RDLENGTH) where (RDLENGTH <= 65535) {
+  UINT8BE Data[:byte-size RDLENGTH]; // Anything at all, up to 65535 octets
+} NULLRDATA;
+
+// WKS RDATA and bitmap (from Snippet 2)
+typedef struct _WKSBitmap(UINT16BE bitmapLength) where (bitmapLength % 1 == 0) {
+  UINT8BE Bitmap[:byte-size bitmapLength];
+} WKSBitmap;
+
+typedef struct _WKS(UINT16BE bitmapLength) where (bitmapLength % 1 == 0) {
+  UINT32BE ADDRESS;
+  UINT8BE PROTOCOL;
+  WKSBitmap(bitmapLength) bitmap;
+} WKS;
+
+// RData casetype for these standard RRs, now including HINFO (TYPE 13), MB (TYPE 7), MD (TYPE 3), MF (TYPE 4), MG (TYPE 8), MINFO (TYPE 14), MR (TYPE 9), MX (TYPE 15), NULL (TYPE 10), TXT (TYPE 16), A (TYPE 1), AAAA (TYPE 28), WKS (TYPE 11)
+// WKSBitmapLength is only meaningful for TYPE 11
+casetype _RData(UINT16BE TYPE, UINT16BE CLASS, UINT16BE RDLENGTH, UINT16BE WKSBitmapLength) {
+  switch (TYPE) {
+    case 1: struct { UINT8BE ADDRESS[4]; } A; // TYPE A, IPv4 address
+    case 2: NS_RDATA ns_rdata; // NS
+    case 3: struct { DomainName MADNAME; } MD_RDATA; // MD
+    case 4: struct { DomainName MADNAME; } MF_RDATA; // MF
+    case 5: CNAME_RDATA cname_rdata; // CNAME
+    case 6: SOA_RDATA soa_rdata; // SOA
+    case 7: struct { DomainName MADNAME; } MB_RDATA; // MB
+    case 8: struct { DomainName MGMNAME; } MG_RDATA; // MG
+    case 9: struct { DomainName NEWNAME; } MR_RDATA; // MR
+    case 10: NULLRDATA(RDLENGTH) null_rdata; // NULL
+    case 11: WKS(WKSBitmapLength) wks; // WKS
+    case 12: PTR_RDATA ptr_rdata; // PTR
+    case 13: struct { CharacterString CPU; CharacterString OS; } HINFO_RDATA; // HINFO
+    case 14: struct { DomainName RMAILBX; DomainName EMAILBX; } MINFO_RDATA; // MINFO
+    case 15: MX_RDATA mx_rdata; // MX
+    case 16: TXT_RDATA(RDLENGTH) txt_rdata; // TXT
+    case 28: struct { UINT8BE Address[16]; } AAAA; // TYPE AAAA, IPv6 address
+  }
+} RData;
+
+// Resource Record struct
+// Remove entrypoint from DNSRR, only DNSMessage is entrypoint
+typedef struct _DNSRR {
+  DomainName NAME;
+  UINT16BE TYPE { TYPE == 1 || TYPE == 2 || TYPE == 3 || TYPE == 4 || TYPE == 5 || TYPE == 6 || TYPE == 7 || TYPE == 8 || TYPE == 9 || TYPE == 10 || TYPE == 11 || TYPE == 12 || TYPE == 13 || TYPE == 14 || TYPE == 15 || TYPE == 16 || TYPE == 28 };
+  UINT16BE CLASS { CLASS == 1 }; // IN class only
+  UINT32BE TTL;
+  UINT16BE RDLENGTH { (TYPE == 1 && RDLENGTH == 4) || (TYPE == 11 && RDLENGTH >= 5 && RDLENGTH <= 65535) || (TYPE != 1 && TYPE != 11 && RDLENGTH >= 0 && RDLENGTH <= 65535) };
+  UINT16BE WKSBitmapLength { (TYPE == 11 && WKSBitmapLength == RDLENGTH - 5) || (TYPE != 11 && WKSBitmapLength == 0) };
+  RData(TYPE, CLASS, RDLENGTH, WKSBitmapLength) RDATA;
+} DNSRR;
+
+// Concrete Question struct
+// Remove entrypoint from Question, only DNSMessage is entrypoint
+typedef struct _Question {
+  DomainName QNAME;
+  UINT16BE QTYPE;
+  UINT16BE QCLASS;
+} Question;
+
+// QuestionPresent casetype for 0 or 1 question
+casetype _QuestionPresent(UINT16BE QDCount) {
+  switch (QDCount) {
+    case 0: unit Empty;
+    case 1: Question question;
+  }
+} QuestionPresent;
+
+// DNSQuestions struct, only supports one question (3D limitation)
+typedef struct _DNSQuestions(UINT16BE QDCount) where QDCount <= 1 {
+  QuestionPresent(QDCount) questionPresent;
+} DNSQuestions;
+
+// AnswerPresent casetype for 0 or 1 answer
+casetype _AnswerPresent(UINT16BE ANCount) {
+  switch (ANCount) {
+    case 0: unit Empty;
+    case 1: DNSRR answer;
+  }
+} AnswerPresent;
+
+// AuthorityPresent casetype for 0 or 1 authority
+casetype _AuthorityPresent(UINT16BE NSCount) {
+  switch (NSCount) {
+    case 0: unit Empty;
+    case 1: DNSRR authority;
+  }
+} AuthorityPresent;
+
+// AdditionalPresent casetype for 0 or 1 additional
+casetype _AdditionalPresent(UINT16BE ARCount) {
+  switch (ARCount) {
+    case 0: unit Empty;
+    case 1: DNSRR additional;
+  }
+} AdditionalPresent;
+
+// Entrypoint DNSMessage, using merged Question struct and concrete DNSRR
+entrypoint typedef struct _DNSMessage {
+  UINT16BE ID;
+  UINT16BE QR: 1;
+  UINT16BE Opcode: 4 { Opcode >= 0 && Opcode <= 2 };
+  UINT16BE AA: 1;
+  UINT16BE TC: 1;
+  UINT16BE RD: 1;
+  UINT16BE RA: 1;
+  UINT16BE Z: 3 { Z == 0 };
+  UINT16BE RCode: 4 { RCode >= 0 && RCode <= 5 };
+  UINT16BE QDCount;
+  UINT16BE ANCount { ANCount <= 1 };
+  UINT16BE NSCount { NSCount <= 1 };
+  UINT16BE ARCount { ARCount <= 1 };
+  DNSQuestions(QDCount) questions;
+  AnswerPresent(ANCount) answerPresent;
+  AuthorityPresent(NSCount) authorityPresent;
+  AdditionalPresent(ARCount) additionalPresent;
+} DNSMessage;

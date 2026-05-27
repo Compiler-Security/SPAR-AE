@@ -1,0 +1,152 @@
+typedef struct _Marker {
+  UINT64BE first {first == 0xFFFFFFFFFFFFFFFF};
+  UINT64BE second {second == 0xFFFFFFFFFFFFFFFF};
+} Marker;
+
+// Prefix tuple for Withdrawn Routes and NLRI
+// Length: bits, Prefix: enough bytes to cover Length bits
+typedef struct _Prefix {
+  UINT8BE Length { Length <= 248 };
+  UINT8BE Prefix[:byte-size ((Length + 7) / 8)];
+} Prefix;
+
+typedef struct _ASPathSegment {
+  UINT8BE SegmentType { SegmentType == 1 || SegmentType == 2 };
+  UINT8BE SegmentLength { SegmentLength <= 127 }; // Ensure 2 * SegmentLength <= 254
+  UINT16BE SegmentValue[:byte-size (2 * SegmentLength)];
+} ASPathSegment;
+
+casetype _PathAttributeValue(UINT8BE TypeCode, UINT8BE Length) {
+  switch(TypeCode) {
+    case 1: struct { // ORIGIN
+      UINT8BE Origin { Origin <= 2 && Length == 1 }; // Length be one the match sizeof(this)
+    } OriginAttr;
+    case 2: struct { // AS_PATH
+      ASPathSegment Segments[:byte-size Length];
+    } ASPathAttr;
+    case 3: struct { // NEXT_HOP
+      UINT32BE NextHop { Length == 4 };
+    } NextHopAttr;
+    case 4: struct { // MULTI_EXIT_DISC
+      UINT32BE MED { Length == 4 };
+    } MEDAttr;
+    case 5: struct { // LOCAL_PREF
+      UINT32BE LocalPref { Length == 4 };
+    } LocalPrefAttr;
+    case 6: struct { // ATOMIC_AGGREGATE
+      unit Empty { Length == 0 };
+    } AtomicAggregateAttr;
+    case 7: struct { // AGGREGATOR
+      UINT16BE ASNumber;
+      UINT32BE AggregatorAddress { Length == 6 };
+      // Length must be 6
+    } AggregatorAttr;
+  }
+} PathAttributeValue;
+
+casetype _PathAttributeValueExtended(UINT8BE TypeCode, UINT16BE Length) {
+  switch(TypeCode) {
+    case 1: struct { // ORIGIN
+      UINT8BE Origin { Origin <= 2 && Length == 1 }; // Length be one the match sizeof(this)
+    } OriginAttr;
+    case 2: struct { // AS_PATH
+      ASPathSegment Segments[:byte-size Length];
+    } ASPathAttr;
+    case 3: struct { // NEXT_HOP
+      UINT32BE NextHop { Length == 4 };
+    } NextHopAttr;
+    case 4: struct { // MULTI_EXIT_DISC
+      UINT32BE MED { Length == 4 };
+    } MEDAttr;
+    case 5: struct { // LOCAL_PREF
+      UINT32BE LocalPref { Length == 4 };
+    } LocalPrefAttr;
+    case 6: struct { // ATOMIC_AGGREGATE
+      unit Empty { Length == 0 };
+    } AtomicAggregateAttr;
+    case 7: struct { // AGGREGATOR
+      UINT16BE ASNumber;
+      UINT32BE AggregatorAddress { Length == 6 };
+      // Length must be 6
+    } AggregatorAttr;
+  }
+} PathAttributeValueExtended;
+
+casetype _PathAttributeBody(UINT8BE TypeCode, UINT8BE ExtendedLength) {
+  switch (ExtendedLength) {
+    case 0: struct {
+      UINT8BE Length;
+      PathAttributeValue(TypeCode, Length) Value;
+    } StandardLengthAttr;
+    case 1: struct {
+      UINT16BE Length;
+      PathAttributeValueExtended(TypeCode, Length) Value;
+    } ExtendedLengthAttr;
+  }
+} PathAttributeBody;
+
+typedef struct _PathAttribute {
+  UINT8BE Optional: 1;
+  UINT8BE Transitive: 1 {Optional == 0 && Transitive == 1 || Optional == 1}; // If Optional is 0, Transitive must be 1
+  // For well-known attributes and for optional non-transitive attributes, the Partial bit MUST be set to 0.
+  UINT8BE Partial: 1 {(Optional == 0 && Partial == 0) || Optional == 1 && Transitive == 0 && Partial == 0 || Optional == 1 && Transitive == 1 && (Partial == 0 || Partial == 1)};
+  UINT8BE ExtendedLength: 1;
+  UINT8BE Unused: 4 {Unused == 0}; // must be zero on sent according to RFC
+  UINT8BE TypeCode {TypeCode >= 1 && TypeCode <= 7 };
+  PathAttributeBody(TypeCode, ExtendedLength) Value;
+} PathAttribute;
+  
+typedef struct _NLRI(UINT16BE NLRI_Length) where (NLRI_Length >= 0) {
+  Prefix NLRI[:byte-size NLRI_Length];
+} NLRI; 
+
+typedef struct _OptionalParameter {
+  UINT8BE ParamType;
+  UINT8BE ParamLength;
+  UINT8BE ParamValue[:byte-size ParamLength]; // In BGP's RFC(which is 4271), ParamValue is not further specified, so we leave it as a byte array
+} OptionalParameter;
+
+typedef struct _OpenMessage {
+  UINT8BE Version { Version == 4 };
+  UINT16BE MyAutonomousSystem; // RFC does not say it cannot be zero (despite AS0 being reserved), so no constraint here
+  UINT16BE HoldTime { HoldTime == 0 || HoldTime >= 3 }; //Hold Time MUST be either zero or at least three seconds
+  UINT32BE BGPIdentifier { BGPIdentifier != 0 };
+  UINT8BE OptionalParametersLength;
+  OptionalParameter OptionalParameters[:byte-size OptionalParametersLength];
+} OpenMessage;
+
+typedef struct _UpdateMessage(UINT16BE Length) where (Length >= 23) {
+  UINT16BE WithdrawnRoutesLength { WithdrawnRoutesLength <= 65535 - 23 };
+  Prefix WithdrawnRoutes[:byte-size WithdrawnRoutesLength];
+  UINT16BE TotalPathAttributeLength { TotalPathAttributeLength <= 65535 - 23 - WithdrawnRoutesLength && Length - 23 >= TotalPathAttributeLength + WithdrawnRoutesLength};
+  PathAttribute PathAttributes[:byte-size TotalPathAttributeLength];
+  NLRI(Length - 19 - 2 - WithdrawnRoutesLength - 2 - TotalPathAttributeLength) nlri;
+} UpdateMessage;
+
+typedef struct _KeepaliveMessage {
+  unit Empty;
+} KeepaliveMessage;
+
+typedef struct _NotificationMessage(UINT16BE Length) where Length >= 21 {
+  UINT8BE ErrorCode { ErrorCode >= 1 && ErrorCode <= 6 };
+  UINT8BE ErrorSubCode { (ErrorCode == 1 && (ErrorSubCode == 1 || ErrorSubCode == 2 || ErrorSubCode == 3)) ||
+                         (ErrorCode == 2 && (ErrorSubCode == 1 || ErrorSubCode == 2 || ErrorSubCode == 3 || ErrorSubCode == 4 || ErrorSubCode == 5 ||ErrorSubCode == 6)) ||
+                         (ErrorCode == 3 && (ErrorSubCode == 1 || ErrorSubCode == 2 || ErrorSubCode == 3 || ErrorSubCode == 4 || ErrorSubCode == 5 || ErrorSubCode == 6 || ErrorSubCode == 7 || ErrorSubCode == 8 || ErrorSubCode == 9 || ErrorSubCode == 10 || ErrorSubCode == 11)) || (ErrorSubCode == 0) };
+  UINT8BE Data[:byte-size (Length - 21)];
+} NotificationMessage;
+
+casetype _BGPMessagePayload(UINT8BE Type, UINT16BE Length) {
+  switch (Type) {
+    case 1: OpenMessage OpenMsg;
+    case 2: UpdateMessage(Length) UpdateMsg;
+    case 3: NotificationMessage(Length) NotificationMsg;
+    case 4: KeepaliveMessage KeepaliveMsg;
+  }
+} BGPMessagePayload;
+
+entrypoint typedef struct _BGPMessage {
+  Marker marker;
+  UINT16BE Length { Length >= 19 && Length <= 4096 && Length == sizeof(this) };
+  UINT8BE Type { Type >= 1 && Type <= 4 };
+  BGPMessagePayload(Type, Length) payload;
+} BGPMessage;

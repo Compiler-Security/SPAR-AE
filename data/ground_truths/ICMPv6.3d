@@ -1,0 +1,56 @@
+typedef struct _DestinationUnreachable {
+  UINT8BE Code { Code >= 0 && Code <= 6 };
+  UINT16BE Checksum;
+  UINT32BE Unused { Unused == 0 };
+} DestinationUnreachable;
+
+typedef struct _PacketTooBig {
+  UINT8BE Code { Code == 0 };
+  UINT16BE Checksum;
+  UINT32BE MTU;
+} PacketTooBig;
+
+typedef struct _TimeExceeded {
+  UINT8BE Code { Code == 0 || Code == 1 };
+  UINT16BE Checksum;
+  UINT32BE Unused { Unused == 0 };
+} TimeExceeded;
+
+typedef struct _ParameterProblem {
+  UINT8BE Code { Code >= 0 && Code <= 2 };
+  UINT16BE Checksum;
+  UINT32BE Pointer;
+} ParameterProblem;
+
+typedef struct _EchoRequest {
+  UINT8BE Code { Code == 0 };
+  UINT16BE Checksum;
+  UINT16BE Identifier;
+  UINT16BE SequenceNumber;
+  // Data field can be added if needed
+} EchoRequest;
+
+typedef struct _EchoReply {
+  UINT8BE Code { Code == 0 };
+  UINT16BE Checksum;
+  UINT16BE Identifier;
+  UINT16BE SequenceNumber;
+  // Data field can be added if needed
+} EchoReply;
+
+casetype _MessageBodyVariant(UINT8BE Type) {
+    switch(Type) {
+        case 1: DestinationUnreachable destUnreachable;
+        case 2: PacketTooBig packetTooBig;
+        case 3: TimeExceeded timeExceeded;
+        case 4: ParameterProblem parameterProblem;
+        case 128: EchoRequest echoRequest;
+        case 129: EchoReply echoReply;
+        // Other ICMPv6 message types can be added here
+    }
+} MessageBodyVariant;
+
+entrypoint typedef struct _ICMPv6Message {
+  UINT8BE Type;
+  MessageBodyVariant(Type) Body;
+}ICMPv6Message;

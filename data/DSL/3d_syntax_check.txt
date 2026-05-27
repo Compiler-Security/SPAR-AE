@@ -1,0 +1,245 @@
+3d is a Dependent Data Description language. Here is a summary of 3d syntax: 
+
+#### Base Types
+- Can only be one of the following big-endian unsigned integers:
+UINT8BE: 8-bit unsigned little-endian integer
+...
+UINT64BE: 64-bit unsigned big-endian integer
+
+#### String Types
+- 3d does NOT have string type. You can use UINT8BE array to represent string.
+- for <character-string> in DNS protocol, you can just define it as UINT8BE array with length prefix.
+  Example:
+typedef struct _CharacterString {
+  UINT8BE Length; // length prefix
+  UINT8BE Value[:byte-size Length]; // string value
+} CharacterString;
+#### Structs
+- Defines complex data types using `typedef struct`.
+- !!!DO NOT use 'type' as an identifier. It is a reserved keyword! Use 'message_type' or 'Type' instead.  \
+- Can have nested structs.
+- Uses `entrypoint` to specify which structs should have their validators exposed to the user. entrypoint struct name must be capitalized
+- No implicit padding or alignment.
+
+Structs can be nested, such as in the following instance:
+
+typedef struct _point {
+  UINT16BE x;
+  UINT16BE y;
+} point;
+
+entrypoint typedef struct _Triangle {
+  point a;
+  point b;
+  point c;
+} Triangle;
+Then, since in this file the definition of point is not prefixed with entrypoint, only Triangle will have its validator exposed in TriangleWrapper.h.
+
+Entrypoints MUST come with struct definitions. You CANNOT write:
+entrypoint XXX;
+It MUST be:
+entrypoint typedef struct _XXX {
+  ...
+} XXX;
+
+#### Constraints
+- Allows constraints to be added to struct fields
+- Supports arithmetic and logical operations in constraints
+- DO NOT use bitwise operations like "Code & 0x1F"!! If you want to do bitwise operation, define bitfields and directly use the corresponding field instead.
+- DO NOT use Ternary expressions like ? :
+- Non-scalar field cannot be refined with constraints
+- You should use `sizeof` or other keywords to get the size of the struct.
+- You will find it impossible to assert an array's all elements's properties. WHAT YOU SHOULD DO is like below:
+typedef struct Zero {
+  UINT8BE Zero { Zero == 0 };
+} Zero;
+
+typedef struct _PadN {
+  UINT8BE Length; // Length of padding, no constraints needed, since it is used for MBZ's size
+  Zero MBZ[:byte-size Length]; // this way we ensure all bytes are zero
+} PadN;
+In this example, we define a struct Zero with a constraint that its only field must be zero. Then, in PadN, we use an array of Zero to ensure that all bytes in the MBZ field are zero, rather than trying to assert a constraint on each element of a UINT8BE array.
+
+Validators for structs alone are only layout-related. Beyond that, 3d provides a way to actually check for constraints on their field values:
+
+entrypoint typedef struct _Smoker {
+  UINT32BE age { age >= 21 };
+  UINT8BE cigarettesConsumed;
+} Smoker;
+In this example, the validator for smoker will check that the value of the age field is at least 21.
+
+The constraint language includes integer arithmetic (+, -, *, /, ==, !=, <=, <, >=, >) and Boolean propositional logic (&&, ||, !)
+
+Constraints on a field can also depend on the values of the previous fields of the struct. For instance, here is a type definition for a pair ordered by increasing values:
+
+entrypoint typedef struct _OrderedPair {
+  UINT32BE lesser;
+  UINT32BE greater { lesser <= greater };
+} OrderedPair;
+Warning:
+Arithmetics on constraints are evaluated in machine integers, not mathematical integers. Folowing examples:
+
+##### Example 1:
+entrypoint typedef struct _BoundedSum {
+  UINT32BE left;
+  UINT32BE right { left + right <= 42 };
+} BoundedSum;
+will fail at F* verification because the expression left + right must be proven to not overflow before evaluating the condition. The correct way of stating the condition is as follows:
+
+entrypoint typedef struct _BoundedSum {
+  UINT32BE left;
+  UINT32BE right { left <= 42 && right <= 42 - left };
+} BoundedSum;
+This verifies because F* evaluates the right-hand-side condition of a && in a context where the left-hand-side condition is assumed to be true (thus 42 - left will not underflow.)
+
+##### Example 2:
+typedef struct _ASPathSegment {
+  UINT8BE SegmentType { SegmentType == 1 || SegmentType == 2 };
+  UINT8BE SegmentLength;
+  UINT16BE SegmentValue[:byte-size (2 * SegmentLength)];
+} ASPathSegment;
+will fail at F* verification because the expression (2 * SegmentLength) must be proven to not overflow before evaluation the condition. The correct way of stating the condition is as follows:
+
+typedef struct _ASPathSegment {
+  UINT8BE SegmentType { SegmentType == 1 || SegmentType == 2 };
+  UINT8BE SegmentLength { SegmentLength <= 127 }; // Ensure 2 * SegmentLength <= 254
+  UINT16BE SegmentValue[:byte-size (2 * SegmentLength)];
+} ASPathSegment;
+This verifies because F* first evaluates SegmentLength <= 127 and thus know 2 * SegmentLength will not overflow.
+
+##### Example 3 (complex conditions):
+entrypoint typedef struct _UpdateMessage(UINT32BE MessageLength) where (
+  MessageLength >= 23
+) {
+  UINT16BE WithdrawnRoutesLength;
+  Prefix WithdrawnRoutes[:byte-size WithdrawnRoutesLength];
+  UINT16BE PathAttributesLength;
+  PathAttribute PathAttributes[:byte-size PathAttributesLength];
+  NLRI(MessageLength - 23 - PathAttributesLength - WithdrawnRoutesLength) nlri;
+} UpdateMessage;
+will fail at F* verification because the expression MessageLength - 23 - PathAttributesLength - WithdrawnRoutesLength must be proven to not underflow. The correct way involves proving each part of the expression both not overflow and not underflow:
+
+entrypoint typedef struct _UpdateMessage(UINT32BE MessageLength) where (
+  MessageLength >= 23 // Ensure MessageLength - 23 >= 0
+) {
+  UINT16BE WithdrawnRoutesLength { WithdrawnRoutesLength <= 65535 - 23 };
+  Prefix WithdrawnRoutes[:byte-size WithdrawnRoutesLength];
+  UINT16BE PathAttributesLength { PathAttributesLength <= 65535 - 23 - WithdrawnRoutesLength && MessageLength - 23 >= PathAttributesLength + WithdrawnRoutesLength };
+  PathAttribute PathAttributes[:byte-size PathAttributesLength];
+  NLRI(MessageLength - 23 - PathAttributesLength - WithdrawnRoutesLength) nlri;
+} UpdateMessage;
+This verified because F* first evaluates WithdrawnRoutesLength <= 65535 - 23 to know that 65535 - 23 - WithdrawnRoutesLength will not underflow, then evaluates PathAttributesLength <= 65535 - 23 - WithdrawnRoutesLength to know that PathAttributesLength + WithdrawnRoutesLength + 23 will not overflow, to finally able to know that MessageLength - 23 - PathAttributesLength - WithdrawnRoutesLength will not underflow, and thus the expression is safe.
+
+
+Bitfields¶
+
+Like in C, the fields of a struct type in 3d can include bitfields, i.e., unsigned integer types of user-specified width represented packed within unsigned integer fields of the canonical sizes UINT16, UINT32 and UINT64.
+
+A struct can be empty:  unit empty; If you want to define an empty struct, you should do it like this:
+
+typedef struct _emptyStruct{
+  unit empty;
+} emptyStruct;
+
+In 3D, you ****CANNOT**** access fields using dot('.') notation. e.g. field.Type or field.Length is NOT VALID.
+
+#### Bitfields
+- Allows bitfields within structs similar to C.
+- Supports least-significant bit first and most-significant bit first packing rules.
+Consider the following example:
+
+typedef struct _BF {
+  UINT32BE x : 6;
+  UINT32BE y : 10 { y <= 900 };
+  UINT32BE z : 16 { y + z <= 60000 };
+} BF;
+This defines a struct BF occupying 32 bits of memory, where the first 6 bits are for the field x; the next 10 bits are for the field y; and the following 16 bits are for the field z.
+
+The fields x, y, and z can all be used in specifications and are implicitly promoted to the underlying integer type, UINT32 in this case, although the 3d verifier is aware of suitable bounds on the types, e.g., that 0 <= x < 64.
+
+For types UINT8. UINT16, UINT32 and UINT64, 3d implements MSVC’s rules for packing bit fields: least-significant bit first. For instance:
+
+typedef struct _BF2 {
+  UINT16BE x : 6;
+  UINT16BE y : 12;
+  UINT8BE z;
+} BF2;
+In BF2, although x, y and z cumulatively consume only 26 bits, the layout of BF2 is actually as shown below, consuming 40 bits, since a given field must be represented within the bounds of a single underlying type—we have 10 unused bits before x and 4 unused bits before y.
+
+#### Parameterized Data Types
+- Allows data types to take parameters.
+- Can use these parameters in constraints.
+
+#### Tagged Unions
+- Supports unions that can have different types based on a 'tag'.
+- Uses `casetype` for defining such unions.
+- the 'tag' in switch must only be a string name, e.g., switch(tag), cannot be switch(tag + 1)
+- NEVER use typedef casetype ... . Always use casetype alone. typedef is only for struct.
+
+casetype _int_payload (UINT32BE size) {
+  switch(size) {
+    case 8:  UINT8  value8;
+    case 16: UINT16 value16;
+    case 32: UINT32 value32;
+  }
+} int_payload;
+
+entrypoint typedef struct _Integer {
+  UINT32BE                size;
+  int_payload(size) payload;
+} Integer;
+
+Consecutive case branches are NOT ALLOWED! 3D language is different to C language. For example, this code:
+
+casetype _authentication(auth_type) {
+  switch (auth_type) {
+    case 1:
+    case 2:
+      UINT8BE auth_id;
+    case 3:
+    case 4:
+      UINT32BE long_auth_id;
+  }
+}
+
+is illegal, because consecutive case branches are invalid in 3D.
+
+#### Arrays
+- Supports fixed-size and variable-size arrays.
+- Array sizes are specified in bytes, can be variable, and are not required to be constant expressions.
+
+Arrays in 3d differ from arrays in C in a few important ways:
+
+Rather than counting elements, the size of an array in 3d is always given in bytes.
+Array sizes need not be a constant expression: any integer expression is permissible for an array, so long as it fits in UINT32. This allows expressing variable-sized arrays.
+3d supports several kinds of arrays.
+
+Byte-sized arrays¶
+
+T f[:byte-size n]
+The notation T f[:byte-size n] describes a field named f holding an array of elements of type T whose cumulative size in bytes is n.
+
+When sizeof(T) = 1, 3d supports the notation T f[n], i.e., for byte arrays, since the byte size and element count coincide, you need not qualify the size of the array with a :byte-size qualifier.
+
+#### Optional field
+- Supports optional field
+- In the following example, field 'authSection' exists or not is determined by the value of A.
+
+casetype _Auth(UINT8BE Auth) {
+  switch(Auth){
+    case 0:
+      unit Empty;
+    case 1: struct {
+      UINT8BE AuthType;
+      AuthPayload(AuthType) payload;
+    } authsection;
+  }
+} Auth;
+
+entrypoint typedef struct _PKT{
+  UINT8BE AuthType;
+  Auth(AuthType) authSection;
+} PKT;
+
+
+

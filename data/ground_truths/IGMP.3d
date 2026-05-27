@@ -1,0 +1,42 @@
+typedef struct _MembershipQuery {
+  UINT8BE MaxRespCode;
+  UINT16BE Checksum;
+  UINT32BE GroupAddress;
+  UINT8BE Resv: 4 { Resv == 0 };
+  UINT8BE S: 1;
+  UINT8BE QRV: 3;
+  UINT8BE QQIC;
+  UINT16BE NumberOfSources { NumberOfSources <= 65535 / 4 && 
+      (NumberOfSources > 0 || GroupAddress == 0)
+   }; // prevent overflow because 3d sucks
+  UINT32BE SourceAddress[:byte-size NumberOfSources * 4]; 
+} MembershipQuery;
+
+typedef struct _GroupRecord {
+  UINT8BE RecordType { RecordType >= 1 && RecordType <= 6 };
+  UINT8BE AuxDataLen { AuxDataLen == 0 }; // IGMPv3 implementations MUST NOT include auxiliary data
+  UINT16BE NumSources { NumSources <= 65535 / 4 }; // prevent overflow because 3d sucks
+  UINT32BE MulticastAddress;
+  UINT32BE SourceAddress[:byte-size NumSources * 4];
+  UINT8BE AuxData[:byte-size AuxDataLen * 4];
+} GroupRecord;
+
+typedef struct _IGMPv3MembershipReportBody {
+  UINT8BE Reserved1 { Reserved1 == 0 };
+  UINT16BE Checksum;
+  UINT16BE Reserved2 { Reserved2 == 0 };
+  UINT16BE NumberOfGroupRecords { NumberOfGroupRecords == 1 }; // because 3d sucks
+  GroupRecord Records;
+} IGMPv3MembershipReportBody;
+
+casetype _ICMPMessageVariant(UINT8BE Type) {
+    switch(Type) {
+        case 0x11: MembershipQuery membershipQuery;
+        case 0x22: IGMPv3MembershipReportBody reportBody;
+    }
+} IGMPMessageVariant;
+
+entrypoint typedef struct _IGMPMessage {
+  UINT8BE Type; // IGMP message type
+  IGMPMessageVariant(Type) message;
+}IGMPMessage;

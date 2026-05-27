@@ -1,0 +1,437 @@
+Example 1:
+###### Given the description:
+3.1.  PTCS Common Header Field Descriptions
+
+   PTCS Common Header Format
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Source Port Number        |     Destination Port Number   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      Verification Tag                         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Checksum                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Source Port Number: 16 bits (unsigned integer)
+      This is the PTCS sender's port number. The port number 0 MUST NOT be used.
+
+   Destination Port Number: 16 bits (unsigned integer)
+      This is the PTCS port number to which this packet is destined. The port number 0
+      MUST NOT be used.
+
+   Verification Tag: 32 bits (unsigned integer)
+      The receiver of this packet uses the Verification Tag to validate
+      the sender of this PTCS packet. 
+
+   Checksum: 32 bits (unsigned integer)
+      This field contains the checksum of this PTCS packet.
+
+#### Expected output:
+typedef _Chunk {
+  unit Empty; // Placeholder for chunk structure
+}Chunk;
+
+entrypoint typedef struct _PTCSMessage(UINT32BE TotalLength) where TotalLength >= 12 {
+  UINT16BE SourcePortNumber {
+    SourcePortNumber != 0;
+  };
+  UINT16BE DestinationPortNumber {
+    DestinationPortNumber != 0;
+  };
+  UINT32BE VerificationTag; // Add constraints if any
+  UINT32BE Checksum;
+  // Common Header do not include chunks. 
+  // We parse chunks until we reach the end of the packet (TotalLength).
+  Chunk chunks[:byte-size TotalLength - 12];
+} PTCSMessage;
+
+
+Example 2:
+###### Given the description:
+3.2.  Chunk Field Descriptions
+
+   The figure below illustrates the field format for the chunks to be
+   transmitted in the PTCS packet.  Each chunk is formatted with a Chunk
+   Type field, a chunk-specific Flag field, a Chunk Length field, and a
+   Value field.
+
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |   Chunk Type  | Chunk  Flags  |        Chunk Length           |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       \                                                               \
+       /                          Chunk Value                          /
+       \                                                               \
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Chunk Type: 8 bits (unsigned integer)
+
+      This field identifies the type of information contained in the
+      Chunk Value field.  It takes a value from 0 to 254.  The value of
+      255 is reserved for future use as an extension field.
+
+      The values of Chunk Types are defined as follows:
+
+   ID Value    Chunk Type
+   -----       ----------
+   0          - Payload Data (DATA)
+   1          - Initiation (INIT)
+   2          - Initiation Acknowledgement (INIT ACK)
+   3          - Selective Acknowledgement (SACK)
+   4          - Heartbeat Request (HEARTBEAT)
+   5          - Heartbeat Acknowledgement (HEARTBEAT ACK)
+   6          - Abort (ABORT)
+   7          - Shutdown (SHUTDOWN)
+   8          - Shutdown Acknowledgement (SHUTDOWN ACK)
+   9          - Operation Error (ERROR)
+   10         - State Cookie (COOKIE ECHO)
+   11         - Cookie Acknowledgement (COOKIE ACK)
+   12         - Reserved for Explicit Congestion Notification Echo
+                (ECNE)
+   13         - Reserved for Congestion Window Reduced (CWR)
+   14         - Shutdown Complete (SHUTDOWN COMPLETE)
+   15 to 62   - available
+   63         - reserved for IETF-defined Chunk Extensions
+   64 to 126  - available
+   127        - reserved for IETF-defined Chunk Extensions
+   128 to 190 - available
+   191        - reserved for IETF-defined Chunk Extensions
+   192 to 254 - available
+   255        - reserved for IETF-defined Chunk Extensions
+
+      Chunk Types are encoded such that the highest-order 2 bits specify
+      the action that must be taken if the processing endpoint does not
+      recognize the Chunk Type.
+
+      00 -  Stop processing this PTCS packet and discard it, do not
+            process any further chunks within it.
+
+      01 -  Stop processing this PTCS packet and discard it, do not
+            process any further chunks within it, and report the
+            unrecognized chunk in an 'Unrecognized Chunk Type'.
+
+      10 -  Skip this chunk and continue processing.
+
+      11 -  Skip this chunk and continue processing, but report in an
+            ERROR chunk using the 'Unrecognized Chunk Type' cause of
+            error.
+
+      Note: The ECNE and CWR chunk types are reserved for future use of
+      Explicit Congestion Notification (ECN); see Appendix A.
+
+   Chunk Flags: 8 bits
+
+      The usage of these bits depends on the Chunk type as given by the
+      Chunk Type field.  Unless otherwise specified, they are set to 0
+      on transmit and are ignored on receipt.
+
+   Chunk Length: 16 bits (unsigned integer)
+
+      This value represents the size of the chunk in bytes, including
+      the Chunk Type, Chunk Flags, Chunk Length, and Chunk Value fields.
+      Therefore, if the Chunk Value field is zero-length, the Length
+      field will be set to 4.  The Chunk Length field does not count any
+      chunk padding.
+
+   Chunk Value: variable length
+
+      The Chunk Value field contains the actual information to be
+      transferred in the chunk.
+
+   The total length of a chunk (including Type, Length, and Value
+   fields) MUST be a multiple of 4 bytes.  If the length of the chunk is
+   not a multiple of 4 bytes, the sender MUST pad the chunk with all
+   zero bytes, and this padding is not included in the Chunk Length
+   field.  The sender MUST NOT pad with more than 3 bytes.  The receiver
+   MUST ignore the padding bytes.
+
+   PTCS-defined chunks are described in detail in Section 3.3.  The
+   guidelines for IETF-defined chunk extensions can be found in Section
+   14.1 of this document.
+
+#### Expected output:
+casetype _ChunkRest(UINT8BE Type){
+  switch (Type) {
+    case 0: struct {
+      unit Empty: // Placeholder for DATA chunk structure
+    } DataChunk;
+    case 1: struct {
+      unit Empty: // Placeholder for INIT chunk structure
+    } InitChunk;
+    case 2: struct {
+      unit Empty: // Placeholder for INIT ACK chunk structure
+    } InitAckChunk;
+    case 3: struct {
+      unit Empty: // Placeholder for SACK chunk structure
+    } SACKChunk;
+    case 4: struct {
+      unit Empty: // Placeholder for HEARTBEAT chunk structure
+    } HeartbeatChunk;
+    case 5: struct {
+      unit Empty: // Placeholder for HEARTBEAT ACK chunk structure
+    } HeartbeatAckChunk;
+    case 6: struct {
+      unit Empty: // Placeholder for ABORT chunk structure
+    } AbortChunk;
+    case 7: struct {
+      unit Empty: // Placeholder for SHUTDOWN chunk structure
+    } ShutdownChunk;
+    case 8: struct {
+      unit Empty: // Placeholder for SHUTDOWN ACK chunk structure
+    } ShutdownAckChunk;
+    case 9: struct {
+      unit Empty: // Placeholder for ERROR chunk structure
+    } Error;
+    case 10: struct {
+      unit Empty: // Placeholder for COOKIE ECHO chunk structure
+    } CookieEchoChunk;
+    case 11: struct {
+      unit Empty: // Placeholder for COOKIE ACK chunk structure
+    } CookieAckChunk;
+    case 14: struct {
+      unit Empty: // Placeholder for SHUTDOWN COMPLETE chunk structure
+    } ShutdownCompleteChunk;
+  }
+}ChunkRest;
+
+typedef struct _Chunk {
+  UINT8BE ChunkType { ChunkType >= 0 && ChunkType <= 11 || ChunkType == 14 }; // doe not support other chunk types for now
+  ChunkRest(ChunkType) chunkRest;
+} Chunk;
+
+Example 3:
+###### Given the description:
+3.3.1.  Payload Data (DATA) (0)
+
+   The following format MUST be used for the DATA chunk:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Type = 0    | Reserved|U|B|E|    Length                     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                              TSN                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |      Stream Identifier S      |   Stream Sequence Number n    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                  Payload Protocol Identifier                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   \                                                               \
+   /                 User Data (seq n of Stream S)                 /
+   \                                                               \
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Reserved: 5 bits
+      Should be set to all '0's and ignored by the receiver.
+
+   U bit: 1 bit
+      The (U)nordered bit.
+
+   B bit: 1 bit
+      The (B)eginning fragment bit.
+
+   E bit: 1 bit
+      The (E)nding fragment bit.
+
+   Length: 16 bits (unsigned integer)
+      This field indicates the length of the DATA chunk in bytes from
+      the beginning of the type field to the end of the User Data field
+      excluding any padding.
+
+   User Data: variable length
+      This is the payload user data. The implementation MUST pad the
+      end of the data to a 4-byte boundary with all-zero bytes.
+  
+#### Expected output:
+// Corresponds to case 0 (DATA) in the ChunkRest switch
+typedef struct _DataChunk {
+  UINT8BE Reserved: 5 { Reserved == 0 };
+  UINT8BE U: 1;
+  UINT8BE B: 1;
+  UINT8BE E: 1;
+  // Length includes header (16 bytes) + User Data, but excludes padding.
+  // Constraint ensures length is at least the size of the header.
+  UINT16BE Length { Length >= 16 && (Length - 16) % 4 == 0 }; 
+  UINT32BE TSN;
+  UINT16BE StreamID;
+  UINT16BE SSN;
+  UINT32BE PayloadProtocolID;
+  UINT8BE UserData[:byte-size Length - 16];
+} DataChunk;
+
+
+Example 4:
+###### Given the description:
+3.2.1.  Optional/Variable-Length Parameter Format
+
+   Chunk values of PTSC control chunks consist of a chunk-type-specific
+   header of required fields, followed by zero or more parameters.  The
+   optional and variable-length parameters contained in a chunk are
+   defined in a Type-Length-Value format as shown below.
+
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |          Parameter Type       |       Parameter Length        |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       \                                                               \
+       /                       Parameter Value                         /
+       \                                                               \
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+   Chunk Parameter Type: 16 bits (unsigned integer)
+
+      The Type field is a 16-bit identifier of the type of parameter.
+      It takes a value of 0 to 65534.
+
+      The value of 65535 is reserved for IETF-defined extensions.
+      Values other than those defined in specific PTSC chunk
+      descriptions are reserved for use by IETF.
+
+   Chunk Parameter Length: 16 bits (unsigned integer)
+
+      The Parameter Length field contains the size of the parameter in
+      bytes, including the Parameter Type, Parameter Length, and
+      Parameter Value fields.  Thus, a parameter with a zero-length
+      Parameter Value field would have a Length field of 4.  The
+      Parameter Length does not include any padding bytes.
+
+   Chunk Parameter Value: variable length
+
+      The Parameter Value field contains the actual information to be
+      transferred in the parameter.
+
+      The total length of a parameter (including Type, Parameter Length,
+      and Value fields) MUST be a multiple of 4 bytes.  If the length of
+      the parameter is not a multiple of 4 bytes, the sender pads the
+      parameter at the end (i.e., after the Parameter Value field) with
+      all zero bytes.  The length of the padding is not included in the
+      Parameter Length field.  A sender MUST NOT pad with more than 3
+      bytes.  The receiver MUST ignore the padding bytes.
+
+      The Parameter Types are encoded such that the highest-order 2 bits
+      specify the action that must be taken if the processing endpoint
+      does not recognize the Parameter Type.
+
+      00 -  Stop processing this parameter; do not process any further
+            parameters within this chunk.
+
+      01 -  Stop processing this parameter, do not process any further
+            parameters within this chunk, and report the unrecognized
+            parameter in an 'Unrecognized Parameter', as described in
+            Section 3.2.2.
+
+      10 -  Skip this parameter and continue processing.
+
+      11 -  Skip this parameter and continue processing but report the
+            unrecognized parameter in an 'Unrecognized Parameter', as
+            described in Section 3.2.2.
+
+   Please note that in all four cases, an INIT ACK or COOKIE ECHO chunk
+   is sent.  In the 00 or 01 case, the processing of the parameters
+   after the unknown parameter is canceled, but no processing already
+   done is rolled back.
+
+   The actual PTSC parameters are defined in the specific PTSC chunk
+   sections.  The rules for IETF-defined parameter extensions are
+   defined in Section 14.2.  Note that a parameter type MUST be unique
+   across all chunks.  For example, the parameter type '5' is used to
+   represent an IPv4 address (see Section 3.3.2.1).  The value '5' then
+   is reserved across all chunks to represent an IPv4 address and MUST
+   NOT be reused with a different meaning in any other chunk.
+
+#### Expected output:
+casetype _OptionalParameterBody(UINT16BE Type, UINT16BE ValueLength){
+  switch (Type) {
+    case 5: struct {
+      UINT8BE IPv4Address[4];
+    } IPv4AddressParameter;
+    case 6: struct {
+      UINT8BE IPv6Address[16];
+    } IPv6AddressParameter;
+    case 7: struct {
+      UINT32BE CookieLifeSpan;
+    } CookieLifeSpanParameter;
+    // Add more parameter types as needed
+  }
+
+typedef struct _OptionalParameter(UINT16BE Type) where (Put appropriate constraints on Type){
+  UINT16BE Length { Length >= 4 && (Length - 4) % 4 == 0 }; // Length includes header (4 bytes) + Value, excludes padding.
+  OptionalParameterBody(Type, Length - 4) Value; // Length - 4 to account for Type and Length fields
+} OptionalParameter;
+
+
+
+
+NOTE: Do not define the same name for parameter and structure field!
+
+For example, This:
+typdef struct _HostNameAddressParamStruct(UINT16BE SupportedTypesParamLength) {
+  UINT16BE Type { Type == 12 };
+  UINT16BE SupportedTypesParamLength { SupportedTypesParamLength >= 4 && (SupportedTypesParamLength - 4) % 4 == 0 };
+  UINT8BE HostNameAddressParamValue[:byte-size SupportedTypesParamLength - 4];
+}HostNameAddressParamStruct;
+
+will cause error due to redefinition of 'SupportedTypesParamLength'. You should consider two different senarios:
+1. Since the parameter is already defined as 'SupportedTypesParamLength', maybe the Type field and the SupportedTypesParamLength field should not be included inside the structure. So you can define it as:
+typdef struct _HostNameAddressParamStruct {
+  UINT8BE HostNameAddressParamValue[:byte-size SupportedTypesParamLength - 4];
+}HostNameAddressParamStruct;
+2. If you really want to include the Type field and the SupportedTypesParamLength field inside the structure, then you should rename the parameter SupportedTypesParamLength to avoid name conflict:
+typdef struct _HostNameAddressParamStruct(UINT16BE SupportedNameAddressParamLength) {
+  UINT16BE Type { Type == 12 };
+  UINT16BE HostNameAddressParamLength { HostNameAddressParamLength >= 4 && (HostNameAddressParamLength - 4) % 4 && HostNameAddressParamLength == SupportedNameAddressParamLength };
+  UINT8BE HostNameAddressParamValue[:byte-size HostNameAddressParamLength - 4];
+}HostNameAddressParamStruct;
+
+NOTE: You should ensure that addtion, subtraction and multiplication on Uint types are safe and will not cause underflow or overflow. For example, if you have a casetype like this:
+casetype _SomeCase(UINT16BE SomeType, UINT16BE SomeLength){
+  switch (SomeType) {
+    case 1: struct {
+      UINT8BE SomeValue[:byte-size SomeLength - 4]; // This may cause underflow if SomeLength < 4
+    } SomeType1;
+    case 2: struct {
+      UINT8BE SomeValue[:byte-size SomeLength * 2]; // This may cause overflow if SomeLength is large
+    } SomeType2;
+  }
+}
+
+The correct way is to add constraints on SomeLength to ensure safety:
+casetype _SomeCase(UINT16BE SomeType, UINT16BE SomeLength) {
+  switch (SomeType) {
+    case 1: struct {
+      unit Empty {SomeLength >= 4}; // Ensure SomeLength >= 4 to avoid underflow
+      UINT8BE SomeValue[:byte-size SomeLength - 4]; // This may cause underflow if SomeLength < 4
+    } SomeType1;
+    case 2: struct {
+      unit Empty {SomeLength <= MAX_SAFE_VALUE}; // Ensure SomeLength is small enough to avoid overflow
+      UINT8BE SomeValue[:byte-size SomeLength * 2]; // This may cause overflow if SomeLength is large
+    } SomeType2;
+  }
+}
+
+NOTE: NEVER define struct in place. Always define typedef first, then use the typedef name in casetype or other struct definitions. For example, do not do this:
+casetype _SomeCase(UINT16BE SomeType, UINT16BE SomeLength){
+  switch (SomeType) {
+    case 1: struct { 
+      struct {
+        UINT8BE SomeValue[:byte-size SomeLength - 4];
+      } SomeType1; // WRONG!!! DO NOT DEFINE STRUCT IN PLACE!!!
+    }SomeType1Field;
+  }
+} SomeCase;
+
+Do this instead:
+typedef struct _SomeType1Struct(UINT16BE SomeLength) where SomeLength >= 4 {
+  UINT8BE SomeValue[:byte-size SomeLength - 4];
+} SomeType1Struct;
+
+casetype _SomeCase(UINT16BE SomeType, UINT16BE SomeLength){
+  switch (SomeType) {
+    case 1: SomeType1Struct(SomeLength) SomeType1Field;
+  }
+} SomeCase;

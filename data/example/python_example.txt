@@ -1,0 +1,520 @@
+Example 1:
+###### Given the description for Route Request:
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    Type = 9   |    Length     |      AE       |     Plen      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|      Prefix...
++-+-+-+-+-+-+-+-+-+-+-+-
+A Route Request TLV prompts the receiver to send an update for a given prefix, or a full route table dump.
+
+Fields:
+
+Type
+Set to 9 to indicate a Route Request TLV.
+Length
+The length of the body in octets, exclusive of the Type and Length fields.
+AE
+The encoding of the Prefix field. The value 0 specifies that this is a request for a full route table dump (a wildcard request).
+Plen
+The length in bits of the requested prefix.
+Prefix
+The prefix being requested. This field's size is Plen/8 rounded upwards.
+A Request TLV prompts the receiver to send an update message (possibly a retraction) for the prefix specified by the AE, Plen, and Prefix fields, or a full dump of its route table if AE is 0 (in which case Plen must be 0 and Prefix is of length 0). A Request TLV with AE set to 0 and Plen not set to 0 MUST be ignored.
+
+This TLV is self-terminating and allows sub-TLVs.
+
+#### Expected output:
+def parse_packet_route_request_tlv(
+  current_result: dict, remaining_input: bytes
+) -> tuple[dict, bytes]:
+  """
+  Parse a Route Request TLV (Type 9) from RFC specification.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+
+  Returns:
+      Tuple of (parsed_fields_dict, remaining_bytes)
+
+  Raises:
+      ValueError: If the input data doesn't conform to RFC specifications
+  """
+  # Minimum length check: Type (1) + Length (1) + AE (1) + Plen (1) = 4 bytes
+  if len(remaining_input) < 4:
+    raise ValueError("Route Request TLV requires at least 4 bytes")
+
+  # Parse fixed header fields
+  tlv_type = remaining_input[0]
+  length = remaining_input[1]
+  ae = remaining_input[2]
+  plen = remaining_input[3]
+
+  # Validate Type field
+  if tlv_type != 9:
+    raise ValueError(f"Expected Type 9 for Route Request TLV, got {tlv_type}")
+
+  # Validate Length field consistency
+  expected_body_length = 2 + (plen + 7) // 8  # AE (1) + Plen (1) + Prefix (variable)
+  if length != expected_body_length:
+    raise ValueError(
+      f"Length field {length} doesn't match expected body length {expected_body_length}"
+    )
+
+  # Validate AE and Plen constraints
+  if ae == 0:
+    # Wildcard request: Plen must be 0 and Prefix must be empty
+    if plen != 0:
+      raise ValueError("AE=0 (wildcard request) requires Plen=0")
+    if length != 2:  # AE (1) + Plen (1)
+      raise ValueError("AE=0 (wildcard request) requires Length=2")
+    prefix = b""
+    remaining_bytes = remaining_input[4:]
+  else:
+    # Specific prefix request
+    prefix_length_bytes = (plen + 7) // 8  # Calculate bytes needed for prefix
+
+    # Check if we have enough bytes for the prefix
+    if len(remaining_input) < 4 + prefix_length_bytes:
+      raise ValueError(
+        f"Insufficient bytes for prefix: need {prefix_length_bytes} bytes"
+      )
+
+    # Extract prefix
+    prefix = remaining_input[4 : 4 + prefix_length_bytes]
+    remaining_bytes = remaining_input[4 + prefix_length_bytes :]
+
+  sub_tlvs = []
+
+  # handle subtlvs
+  while len(remaining_bytes) > 0:
+    sub_tlv_result, remaining_bytes = parse_packet_subtlv({}, remaining_bytes)
+    sub_tlvs.append(sub_tlv_result)
+
+  # Build result dictionary
+  result = {
+    "type": tlv_type,
+    "length": length,
+    "ae": ae,
+    "plen": plen,
+    "prefix": prefix,
+    "sub_tlvs": sub_tlvs,
+  }
+
+  # Update current_result with parsed fields
+  current_result.update(result)
+
+  return current_result, remaining_bytes
+
+
+def parse_packet_subtlv(
+  current_result: dict, remaining_input: bytes
+) -> tuple[dict, bytes]:
+  """
+  Placeholder function to parse sub-TLVs.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+  """
+
+Example 2:
+###### Given the description for BFD Control Packet:
+4.1.  Generic BFD Control Packet Format
+   BFD Control packets are sent in an encapsulation appropriate to the
+   environment.  The specific encapsulation is outside of the scope of
+   this specification.  See the appropriate application document for
+   encapsulation details.
+   The BFD Control packet has a Mandatory Section and an optional
+   Authentication Section.  The format of the Authentication Section, if
+   present, is dependent on the type of authentication in use.
+   The Mandatory Section of a BFD Control packet has the following
+   format:
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Vers |  Diag   |Sta|P|F|C|A|D|M|  Detect Mult  |    Length     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       My Discriminator                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      Your Discriminator                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Desired Min TX Interval                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                   Required Min RX Interval                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                 Required Min Echo RX Interval                 |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   An optional Authentication Section MAY be present:
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Auth Type   |   Auth Len    |    Authentication Data...     |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   Version (Vers)
+      The version number of the protocol.  This document defines
+      protocol version 1.
+   Diagnostic (Diag)
+      A diagnostic code specifying the local system's reason for the
+      last change in session state.  Values are:
+         0 -- No Diagnostic
+         1 -- Control Detection Time Expired
+         2 -- Echo Function Failed
+         3 -- Neighbor Signaled Session Down
+         4 -- Forwarding Plane Reset
+         5 -- Path Down
+         6 -- Concatenated Path Down
+         7 -- Administratively Down
+         8 -- Reverse Concatenated Path Down
+      9-31 -- Reserved for future use
+      This field allows remote systems to determine the reason that the
+      previous session failed, for example.
+   State (Sta)
+      The current BFD session state as seen by the transmitting system.
+      Values are:
+         0 -- AdminDown
+         1 -- Down
+         2 -- Init
+         3 -- Up
+   Poll (P)
+      If set, the transmitting system is requesting verification of
+      connectivity, or of a parameter change, and is expecting a packet
+      with the Final (F) bit in reply.  If clear, the transmitting
+      system is not requesting verification.
+   Final (F)
+      If set, the transmitting system is responding to a received BFD
+      Control packet that had the Poll (P) bit set.  If clear, the
+      transmitting system is not responding to a Poll.
+   Control Plane Independent (C)
+      If set, the transmitting system's BFD implementation does not
+      share fate with its control plane (in other words, BFD is
+      implemented in the forwarding plane and can continue to function
+      through disruptions in the control plane).  If clear, the
+      transmitting system's BFD implementation shares fate with its
+      control plane.
+      The use of this bit is application dependent and is outside the
+      scope of this specification.  See specific application
+      specifications for details.
+   Authentication Present (A)
+      If set, the Authentication Section is present and the session is
+      to be authenticated (see section 6.7 for details).
+   Demand (D)
+      If set, Demand mode is active in the transmitting system (the
+      system wishes to operate in Demand mode, knows that the session is
+      Up in both directions, and is directing the remote system to cease
+      the periodic transmission of BFD Control packets).  If clear,
+      Demand mode is not active in the transmitting system.
+   Multipoint (M)
+      This bit is reserved for future point-to-multipoint extensions to
+      BFD.  It MUST be zero on both transmit and receipt.
+   Detect Mult
+      Detection time multiplier.  The negotiated transmit interval,
+      multiplied by this value, provides the Detection Time for the
+      receiving system in Asynchronous mode.
+   Length
+      Length of the BFD Control packet, in bytes.
+   My Discriminator
+      A unique, nonzero discriminator value generated by the
+      transmitting system, used to demultiplex multiple BFD sessions
+      between the same pair of systems.
+   Your Discriminator
+      The discriminator received from the corresponding remote system.
+      This field reflects back the received value of My Discriminator,
+      or is zero if that value is unknown.
+   Desired Min TX Interval
+      This is the minimum interval, in microseconds, that the local
+      system would like to use when transmitting BFD Control packets,
+      less any jitter applied (see section 6.8.2).  The value zero is
+      reserved.
+   Required Min RX Interval
+      This is the minimum interval, in microseconds, between received
+      BFD Control packets that this system is capable of supporting,
+      less any jitter applied by the sender (see section 6.8.2).  If
+      this value is zero, the transmitting system does not want the
+      remote system to send any periodic BFD Control packets.
+   Required Min Echo RX Interval
+      This is the minimum interval, in microseconds, between received
+      BFD Echo packets that this system is capable of supporting, less
+      any jitter applied by the sender (see section 6.8.9).  If this
+      value is zero, the transmitting system does not support the
+      receipt of BFD Echo packets.
+   Auth Type
+      The authentication type in use, if the Authentication Present (A)
+      bit is set.
+         0 - Reserved
+         1 - Simple Password
+         2 - Keyed MD5
+         3 - Meticulous Keyed MD5
+         4 - Keyed SHA1
+         5 - Meticulous Keyed SHA1
+     6-255 - Reserved for future use
+   Auth Len
+      The length, in bytes, of the authentication section, including the
+      Auth Type and Auth Len fields.
+
+#### Expected output:
+def parse_packet_bfd_control_packet(
+  current_result: dict, remaining_input: bytes
+) -> tuple[dict, bytes]:
+  """
+  Parse a BFD Control Packet from RFC specification.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+
+  Returns:
+      Tuple of (parsed_fields_dict, remaining_bytes)
+
+  Raises:
+      ValueError: If the input data doesn't conform to RFC specifications
+  """
+  # Minimum length check for mandatory section: 24 bytes
+  if len(remaining_input) < 24:
+    raise ValueError(
+      "BFD Control Packet requires at least 24 bytes for mandatory section"
+    )
+
+  # Parse the first byte (Vers and Diag)
+  first_byte = remaining_input[0]
+  vers = (first_byte & 0xE0) >> 5  # Bits 7-5 (3 bits)
+  diag = first_byte & 0x1F  # Bits 4-0 (5 bits)
+
+  # Parse the second byte (flags and Detect Mult)
+  second_byte = remaining_input[1]
+  sta = (second_byte & 0xC0) >> 6  # Bits 7-6 (2 bits)
+  p_flag = (second_byte & 0x20) >> 5  # Bit 5 (1 bit)
+  f_flag = (second_byte & 0x10) >> 4  # Bit 4 (1 bit)
+  c_flag = (second_byte & 0x08) >> 3  # Bit 3 (1 bit)
+  a_flag = (second_byte & 0x04) >> 2  # Bit 2 (1 bit)
+  d_flag = (second_byte & 0x02) >> 1  # Bit 1 (1 bit)
+  m_flag = second_byte & 0x01  # Bit 0 (1 bit)
+  detect_mult = remaining_input[2]
+  length = remaining_input[3]
+
+  # Validate Version field
+  if vers != 1:
+    raise ValueError(f"Expected Version 1 for BFD Control Packet, got {vers}")
+
+  # Validate Diagnostic field
+  if diag > 8 and diag < 31:
+    raise ValueError(f"Diagnostic value {diag} is reserved for future use")
+
+  # Validate State field
+  if sta > 3:
+    raise ValueError(f"Invalid State value {sta}, must be 0-3")
+
+  # Validate Multipoint bit
+  if m_flag != 0:
+    raise ValueError("Multipoint bit (M) must be zero")
+
+  # Validate Length field
+  if length < 24:
+    raise ValueError(f"Length field {length} is less than minimum 24 bytes")
+  if length != len(remaining_input):
+    raise ValueError(
+      f"Length field {length} does not match actual input length {len(remaining_input)}"
+    )
+
+  # Parse discriminator fields (4 bytes each)
+  my_discriminator = int.from_bytes(remaining_input[4:8], byteorder="big")
+  your_discriminator = int.from_bytes(remaining_input[8:12], byteorder="big")
+
+  # Validate My Discriminator
+  if my_discriminator == 0:
+    raise ValueError("My Discriminator must be nonzero")
+
+  # Validate Your Discriminator and Packet State
+  if sta in (2, 3) and your_discriminator == 0:
+    raise ValueError(
+      "Your Discriminator must be nonzero when State is Init or Up"
+    )
+
+  # Parse interval fields (4 bytes each)
+  desired_min_tx_interval = int.from_bytes(remaining_input[12:16], byteorder="big")
+  required_min_rx_interval = int.from_bytes(remaining_input[16:20], byteorder="big")
+  required_min_echo_rx_interval = int.from_bytes(
+    remaining_input[20:24], byteorder="big"
+  )
+
+  # Validate Desired Min TX Interval
+  if desired_min_tx_interval == 0:
+    raise ValueError("Desired Min TX Interval must not be zero")
+
+  # Calculate remaining bytes after mandatory section
+  remaining_bytes = remaining_input[24:length]
+
+  # Handle authentication section if present
+  auth_data = None
+  auth_type = None
+  auth_len = None
+
+  if a_flag:
+    # Check if we have enough bytes for authentication header
+    if len(remaining_bytes) < 2:
+      raise ValueError(
+        "Authentication Present bit set but insufficient bytes for auth header"
+      )
+
+    auth_type = remaining_bytes[0]
+    auth_len = remaining_bytes[1]
+
+    # Validate Auth Type
+    if auth_type == 0 or (auth_type > 5 and auth_type < 256):
+      raise ValueError(f"Auth Type {auth_type} is reserved")
+
+    # Validate Auth Len
+    if auth_len < 2:
+      raise ValueError(f"Auth Len {auth_len} must be at least 2")
+    if auth_len > len(remaining_bytes):
+      raise ValueError(f"Auth Len {auth_len} exceeds available auth data")
+
+    # Extract authentication data
+    auth_section = None
+    match auth_type:
+      case 1:  # Simple Password
+        auth_section, remaining_bytes = parse_packet_simple_password_auth_section(
+          {}, remaining_bytes[:auth_len]
+        )
+      case 2:  # Keyed MD5
+        auth_section, remaining_bytes = parse_packet_keyed_md5_auth_section(
+          {}, remaining_bytes[:auth_len]
+        )
+      case 3:  # Meticulous Keyed MD5
+        auth_section, remaining_bytes = parse_packet_meticulous_keyed_md5_auth_section(
+          {}, remaining_bytes[:auth_len]
+        )
+      case 4:  # Keyed SHA1
+        auth_section, remaining_bytes = parse_packet_keyed_sha1_auth_section(
+          {}, remaining_bytes[:auth_len]
+        )
+      case 5:  # Meticulous Keyed SHA1
+        auth_section, remaining_bytes = parse_packet_meticulous_keyed_sha1_auth_section(
+          {}, remaining_bytes[:auth_len]
+        )
+      case _:
+        raise ValueError(f"Unsupported Auth Type {auth_type}")
+    # remaining_bytes = remaining_bytes[auth_len:]
+
+  # Build result dictionary
+  result = {
+    "version": vers,
+    "diagnostic": diag,
+    "state": sta,
+    "poll": bool(p_flag),
+    "final": bool(f_flag),
+    "control_plane_independent": bool(c_flag),
+    "authentication_present": bool(a_flag),
+    "demand": bool(d_flag),
+    "multipoint": bool(m_flag),
+    "detect_mult": detect_mult,
+    "length": length,
+    "my_discriminator": my_discriminator,
+    "your_discriminator": your_discriminator,
+    "desired_min_tx_interval": desired_min_tx_interval,
+    "required_min_rx_interval": required_min_rx_interval,
+    "required_min_echo_rx_interval": required_min_echo_rx_interval,
+  }
+
+  # Add authentication fields if present
+  if a_flag:
+    result.update(
+      {"auth_type": auth_type, "auth_len": auth_len, "auth_section": auth_section}
+    )
+
+  # Update current_result with parsed fields
+  current_result.update(result)
+
+  return current_result, remaining_bytes
+
+
+def parse_packet_simple_password_auth_section(
+  current_result: dict, remaining_input: bytes
+) -> dict:
+  """
+  Placeholder to Parse Simple Password Authentication Section from RFC specification.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+
+  Returns:
+      Parsed fields dictionary
+
+  Raises:
+      ValueError: If the input data doesn't conform to RFC specifications
+  """
+
+
+def parse_packet_keyed_md5_auth_section(
+  current_result: dict, remaining_input: bytes
+) -> dict:
+  """
+  Placeholder to Parse Keyed MD5 Authentication Section from RFC specification.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+
+  Returns:
+      Parsed fields dictionary
+
+  Raises:
+      ValueError: If the input data doesn't conform to RFC specifications
+  """
+
+
+def parse_packet_meticulous_keyed_md5_auth_section(
+  current_result: dict, remaining_input: bytes
+) -> dict:
+  """
+  Placeholder to Parse Meticulous Keyed MD5 Authentication Section from RFC specification.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+
+  Returns:
+      Parsed fields dictionary
+
+  Raises:
+      ValueError: If the input data doesn't conform to RFC specifications
+  """
+
+
+def parse_packet_keyed_sha1_auth_section(
+  current_result: dict, remaining_input: bytes
+) -> dict:
+  """
+  Placeholder to Parse Keyed SHA1 Authentication Section from RFC specification.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+
+  Returns:
+      Parsed fields dictionary
+
+  Raises:
+      ValueError: If the input data doesn't conform to RFC specifications
+  """
+
+
+def parse_packet_meticulous_keyed_sha1_auth_section(
+  current_result: dict, remaining_input: bytes
+) -> dict:
+  """
+  Placeholder to Parse Meticulous Keyed SHA1 Authentication Section from RFC specification.
+
+  Args:
+      current_result: Dictionary containing already parsed fields
+      remaining_input: Bytes to parse
+
+  Returns:
+      Parsed fields dictionary
+
+  Raises:
+      ValueError: If the input data doesn't conform to RFC specifications
+  """

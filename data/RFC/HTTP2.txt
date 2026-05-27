@@ -1,0 +1,827 @@
+4.  PTTH Frames
+
+   Once the PTTH/2 connection is established, endpoints can begin
+   exchanging frames.
+
+4.1.  Frame Format
+
+   All frames begin with a fixed 9-octet header followed by a variable-
+   length payload.
+
+    +-----------------------------------------------+
+    |                 Length (24)                   |
+    +---------------+---------------+---------------+
+    |   Type (8)    |   Flags (8)   |
+    +-+-------------+---------------+-------------------------------+
+    |R|                 Stream Identifier (31)                      |
+    +=+=============================================================+
+    |                   Frame Payload (0...)                      ...
+    +---------------------------------------------------------------+
+
+                          Figure 1: Frame Layout
+
+   The fields of the frame header are defined as:
+
+   Length:  The length of the frame payload expressed as an unsigned
+      24-bit integer.  Values greater than 2^14 (16,384) MUST NOT be
+      sent unless the receiver has set a larger value for
+      SETTINGS_MAX_FRAME_SIZE.
+
+      The 9 octets of the frame header are not included in this value.
+
+
+
+
+
+
+
+   Type:  The 8-bit type of the frame.  The frame type determines the
+      format and semantics of the frame.  Implementations MUST ignore
+      and discard any frame that has a type that is unknown.
+
+   Flags:  An 8-bit field reserved for boolean flags specific to the
+      frame type.
+
+      Flags are assigned semantics specific to the indicated frame type.
+      Flags that have no defined semantics for a particular frame type
+      MUST be ignored and MUST be left unset (0x0) when sending.
+
+   R: A reserved 1-bit field.  The semantics of this bit are undefined,
+      and the bit MUST remain unset (0x0) when sending and MUST be
+      ignored when receiving.
+
+   Stream Identifier:  A stream identifier (see Section 5.1.1) expressed
+      as an unsigned 31-bit integer.  The value 0x0 is reserved for
+      frames that are associated with the connection as a whole as
+      opposed to an individual stream.
+
+   The structure and content of the frame payload is dependent entirely
+   on the frame type.
+
+6.1.  DATA
+
+   DATA frames (type=0x0) convey arbitrary, variable-length sequences of
+   octets associated with a stream.  One or more DATA frames are used,
+   for instance, to carry PTTH request or response payloads.
+
+   DATA frames MAY also contain padding.  Padding can be added to DATA
+   frames to obscure the size of messages.  Padding is a security
+   feature; see Section 10.7.
+
+    +---------------+
+    |Pad Length? (8)|
+    +---------------+-----------------------------------------------+
+    |                            Data (*)                         ...
+    +---------------------------------------------------------------+
+    |                           Padding (*)                       ...
+    +---------------------------------------------------------------+
+
+                       Figure 6: DATA Frame Payload
+
+   The DATA frame contains the following fields:
+
+   Pad Length:  An 8-bit field containing the length of the frame
+      padding in units of octets.  This field is conditional (as
+      signified by a "?" in the diagram) and is only present if the
+      PADDED flag is set.
+
+   Data:  Application data.  The amount of data is the remainder of the
+      frame payload after subtracting the length of the other fields
+      that are present.
+
+
+
+
+
+   Padding:  Padding octets that contain no application semantic value.
+      Padding octets MUST be set to zero when sending.  A receiver is
+      not obligated to verify padding but MAY treat non-zero padding as
+      a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+
+   The DATA frame defines the following flags:
+
+   END_STREAM (0x1):  When set, bit 0 indicates that this frame is the
+      last that the endpoint will send for the identified stream.
+      Setting this flag causes the stream to enter one of the "half-
+      closed" states or the "closed" state (Section 5.1).
+
+   PADDED (0x8):  When set, bit 3 indicates that the Pad Length field
+      and any padding that it describes are present.
+
+   DATA frames MUST be associated with a stream.  If a DATA frame is
+   received whose stream identifier field is 0x0, the recipient MUST
+   respond with a connection error (Section 5.4.1) of type
+   PROTOCOL_ERROR.
+
+   DATA frames are subject to flow control and can only be sent when a
+   stream is in the "open" or "half-closed (remote)" state.  The entire
+   DATA frame payload is included in flow control, including the Pad
+   Length and Padding fields if present.  If a DATA frame is received
+   whose stream is not in "open" or "half-closed (local)" state, the
+   recipient MUST respond with a stream error (Section 5.4.2) of type
+   STREAM_CLOSED.
+
+   The total number of padding octets is determined by the value of the
+   Pad Length field.  If the length of the padding is the length of the
+   frame payload or greater, the recipient MUST treat this as a
+   connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+
+      Note: A frame can be increased in size by one octet by including a
+      Pad Length field with a value of zero.
+
+6.2.  HEADERS
+
+   The HEADERS frame (type=0x1) is used to open a stream (Section 5.1),
+   and additionally carries a header block fragment.  HEADERS frames can
+   be sent on a stream in the "idle", "reserved (local)", "open", or
+   "half-closed (remote)" state.
+
+    +---------------+
+    |Pad Length? (8)|
+    +-+-------------+-----------------------------------------------+
+    |E|                 Stream Dependency? (31)                     |
+    +-+-------------+-----------------------------------------------+
+    |  Weight? (8)  |
+    +-+-------------+-----------------------------------------------+
+    |                   Header Block Fragment (*)                 ...
+    +---------------------------------------------------------------+
+    |                           Padding (*)                       ...
+    +---------------------------------------------------------------+
+
+                      Figure 7: HEADERS Frame Payload
+
+   The HEADERS frame payload has the following fields:
+
+   Pad Length:  An 8-bit field containing the length of the frame
+      padding in units of octets.  This field is only present if the
+      PADDED flag is set.
+
+   E: A single-bit flag indicating that the stream dependency is
+      exclusive (see Section 5.3).  This field is only present if the
+      PRIORITY flag is set.
+
+   Stream Dependency:  A 31-bit stream identifier for the stream that
+      this stream depends on (see Section 5.3).  This field is only
+      present if the PRIORITY flag is set.
+
+   Weight:  An unsigned 8-bit integer representing a priority weight for
+      the stream (see Section 5.3).  Add one to the value to obtain a
+      weight between 1 and 256.  This field is only present if the
+      PRIORITY flag is set.
+
+   Header Block Fragment:  A header block fragment (Section 4.3).
+
+   Padding:  Padding octets.
+
+   The HEADERS frame defines the following flags:
+
+   END_STREAM (0x1):  When set, bit 0 indicates that the header block
+      (Section 4.3) is the last that the endpoint will send for the
+      identified stream.
+
+      A HEADERS frame carries the END_STREAM flag that signals the end
+      of a stream.  However, a HEADERS frame with the END_STREAM flag
+      set can be followed by CONTINUATION frames on the same stream.
+      Logically, the CONTINUATION frames are part of the HEADERS frame.
+
+
+   END_HEADERS (0x4):  When set, bit 2 indicates that this frame
+      contains an entire header block (Section 4.3) and is not followed
+      by any CONTINUATION frames.
+
+      A HEADERS frame without the END_HEADERS flag set MUST be followed
+      by a CONTINUATION frame for the same stream.  A receiver MUST
+      treat the receipt of any other type of frame or a frame on a
+      different stream as a connection error (Section 5.4.1) of type
+      PROTOCOL_ERROR.
+
+   PADDED (0x8):  When set, bit 3 indicates that the Pad Length field
+      and any padding that it describes are present.
+
+   PRIORITY (0x20):  When set, bit 5 indicates that the Exclusive Flag
+      (E), Stream Dependency, and Weight fields are present; see
+      Section 5.3.
+
+   The payload of a HEADERS frame contains a header block fragment
+   (Section 4.3).  A header block that does not fit within a HEADERS
+   frame is continued in a CONTINUATION frame (Section 6.10).
+
+   HEADERS frames MUST be associated with a stream.  If a HEADERS frame
+   is received whose stream identifier field is 0x0, the recipient MUST
+   respond with a connection error (Section 5.4.1) of type
+   PROTOCOL_ERROR.
+
+   The HEADERS frame changes the connection state as described in
+   Section 4.3.
+
+   The HEADERS frame can include padding.  Padding fields and flags are
+   identical to those defined for DATA frames (Section 6.1).  Padding
+   that exceeds the size remaining for the header block fragment MUST be
+   treated as a PROTOCOL_ERROR.
+
+   Prioritization information in a HEADERS frame is logically equivalent
+   to a separate PRIORITY frame, but inclusion in HEADERS avoids the
+   potential for churn in stream prioritization when new streams are
+   created.  Prioritization fields in HEADERS frames subsequent to the
+   first on a stream reprioritize the stream (Section 5.3.3).
+
+6.3.  PRIORITY
+
+   The PRIORITY frame (type=0x2) specifies the sender-advised priority
+   of a stream (Section 5.3).  It can be sent in any stream state,
+   including idle or closed streams.
+
+    +-+-------------------------------------------------------------+
+    |E|                  Stream Dependency (31)                     |
+    +-+-------------+-----------------------------------------------+
+    |   Weight (8)  |
+    +-+-------------+
+
+                     Figure 8: PRIORITY Frame Payload
+
+   The payload of a PRIORITY frame contains the following fields:
+
+   E: A single-bit flag indicating that the stream dependency is
+      exclusive (see Section 5.3).
+
+   Stream Dependency:  A 31-bit stream identifier for the stream that
+      this stream depends on (see Section 5.3).
+
+   Weight:  An unsigned 8-bit integer representing a priority weight for
+      the stream (see Section 5.3).  Add one to the value to obtain a
+      weight between 1 and 256.
+
+   The PRIORITY frame does not define any flags.
+
+   The PRIORITY frame always identifies a stream.  If a PRIORITY frame
+   is received with a stream identifier of 0x0, the recipient MUST
+   respond with a connection error (Section 5.4.1) of type
+   PROTOCOL_ERROR.
+
+   The PRIORITY frame can be sent on a stream in any state, though it
+   cannot be sent between consecutive frames that comprise a single
+   header block (Section 4.3).  Note that this frame could arrive after
+   processing or frame sending has completed, which would cause it to
+   have no effect on the identified stream.  For a stream that is in the
+   "half-closed (remote)" or "closed" state, this frame can only affect
+   processing of the identified stream and its dependent streams; it
+   does not affect frame transmission on that stream.
+
+   The PRIORITY frame can be sent for a stream in the "idle" or "closed"
+   state.  This allows for the reprioritization of a group of dependent
+   streams by altering the priority of an unused or closed parent
+   stream.
+
+   A PRIORITY frame with a length other than 5 octets MUST be treated as
+   a stream error (Section 5.4.2) of type FRAME_SIZE_ERROR.
+
+6.4.  RST_STREAM
+
+   The RST_STREAM frame (type=0x3) allows for immediate termination of a
+   stream.  RST_STREAM is sent to request cancellation of a stream or to
+   indicate that an error condition has occurred.
+
+    +---------------------------------------------------------------+
+    |                        Error Code (32)                        |
+    +---------------------------------------------------------------+
+
+                    Figure 9: RST_STREAM Frame Payload
+
+   The RST_STREAM frame contains a single unsigned, 32-bit integer
+   identifying the error code (Section 7).  The error code indicates why
+   the stream is being terminated.
+
+   The RST_STREAM frame does not define any flags.
+
+   The RST_STREAM frame fully terminates the referenced stream and
+   causes it to enter the "closed" state.  After receiving a RST_STREAM
+   on a stream, the receiver MUST NOT send additional frames for that
+   stream, with the exception of PRIORITY.  However, after sending the
+   RST_STREAM, the sending endpoint MUST be prepared to receive and
+   process additional frames sent on the stream that might have been
+   sent by the peer prior to the arrival of the RST_STREAM.
+
+   RST_STREAM frames MUST be associated with a stream.  If a RST_STREAM
+   frame is received with a stream identifier of 0x0, the recipient MUST
+   treat this as a connection error (Section 5.4.1) of type
+   PROTOCOL_ERROR.
+
+   RST_STREAM frames MUST NOT be sent for a stream in the "idle" state.
+   If a RST_STREAM frame identifying an idle stream is received, the
+   recipient MUST treat this as a connection error (Section 5.4.1) of
+   type PROTOCOL_ERROR.
+
+   A RST_STREAM frame with a length other than 4 octets MUST be treated
+   as a connection error (Section 5.4.1) of type FRAME_SIZE_ERROR.
+
+6.5.  SETTINGS
+
+   The SETTINGS frame (type=0x4) conveys configuration parameters that
+   affect how endpoints communicate, such as preferences and constraints
+   on peer behavior.  The SETTINGS frame is also used to acknowledge the
+   receipt of those parameters.  Individually, a SETTINGS parameter can
+   also be referred to as a "setting".
+
+
+   SETTINGS parameters are not negotiated; they describe characteristics
+   of the sending peer, which are used by the receiving peer.  Different
+   values for the same parameter can be advertised by each peer.  For
+   example, a client might set a high initial flow-control window,
+   whereas a server might set a lower value to conserve resources.
+
+   A SETTINGS frame MUST be sent by both endpoints at the start of a
+   connection and MAY be sent at any other time by either endpoint over
+   the lifetime of the connection.  Implementations MUST support all of
+   the parameters defined by this specification.
+
+   Each parameter in a SETTINGS frame replaces any existing value for
+   that parameter.  Parameters are processed in the order in which they
+   appear, and a receiver of a SETTINGS frame does not need to maintain
+   any state other than the current value of its parameters.  Therefore,
+   the value of a SETTINGS parameter is the last value that is seen by a
+   receiver.
+
+   SETTINGS parameters are acknowledged by the receiving peer.  To
+   enable this, the SETTINGS frame defines the following flag:
+
+   ACK (0x1):  When set, bit 0 indicates that this frame acknowledges
+      receipt and application of the peer's SETTINGS frame.  When this
+      bit is set, the payload of the SETTINGS frame MUST be empty.
+      Receipt of a SETTINGS frame with the ACK flag set and a length
+      field value other than 0 MUST be treated as a connection error
+      (Section 5.4.1) of type FRAME_SIZE_ERROR.  For more information,
+      see Section 6.5.3 ("Settings Synchronization").
+
+   SETTINGS frames always apply to a connection, never a single stream.
+   The stream identifier for a SETTINGS frame MUST be zero (0x0).  If an
+   endpoint receives a SETTINGS frame whose stream identifier field is
+   anything other than 0x0, the endpoint MUST respond with a connection
+   error (Section 5.4.1) of type PROTOCOL_ERROR.
+
+   The SETTINGS frame affects connection state.  A badly formed or
+   incomplete SETTINGS frame MUST be treated as a connection error
+   (Section 5.4.1) of type PROTOCOL_ERROR.
+
+   A SETTINGS frame with a length other than a multiple of 6 octets MUST
+   be treated as a connection error (Section 5.4.1) of type
+   FRAME_SIZE_ERROR.
+
+   The payload of a SETTINGS frame consists of zero or more parameters,
+   each consisting of an unsigned 16-bit setting identifier and an
+   unsigned 32-bit value.
+
+    +-------------------------------+
+    |       Identifier (16)         |
+    +-------------------------------+-------------------------------+
+    |                        Value (32)                             |
+    +---------------------------------------------------------------+
+
+                         Figure 10: Setting Format
+
+   The following parameters are defined:
+
+   SETTINGS_HEADER_TABLE_SIZE (0x1):  Allows the sender to inform the
+      remote endpoint of the maximum size of the header compression
+      table used to decode header blocks, in octets.  The encoder can
+      select any size equal to or less than this value by using
+      signaling specific to the header compression format inside a
+      header block (see [COMPRESSION]).  The initial value is 4,096
+      octets.
+
+   SETTINGS_ENABLE_PUSH (0x2):  This setting can be used to disable
+      server push (Section 8.2).  An endpoint MUST NOT send a
+      PUSH_PROMISE frame if it receives this parameter set to a value of
+      0.  An endpoint that has both set this parameter to 0 and had it
+      acknowledged MUST treat the receipt of a PUSH_PROMISE frame as a
+      connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+
+      The initial value is 1, which indicates that server push is
+      permitted.  Any value other than 0 or 1 MUST be treated as a
+      connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+
+   SETTINGS_MAX_CONCURRENT_STREAMS (0x3):  Indicates the maximum number
+      of concurrent streams that the sender will allow.  This limit is
+      directional: it applies to the number of streams that the sender
+      permits the receiver to create.  Initially, there is no limit to
+      this value.  It is recommended that this value be no smaller than
+      100, so as to not unnecessarily limit parallelism.
+
+      A value of 0 for SETTINGS_MAX_CONCURRENT_STREAMS SHOULD NOT be
+      treated as special by endpoints.  A zero value does prevent the
+      creation of new streams; however, this can also happen for any
+
+      limit that is exhausted with active streams.  Servers SHOULD only
+      set a zero value for short durations; if a server does not wish to
+      accept requests, closing the connection is more appropriate.
+
+   SETTINGS_INITIAL_WINDOW_SIZE (0x4):  Indicates the sender's initial
+      window size (in octets) for stream-level flow control.  The
+      initial value is 2^16-1 (65,535) octets.
+
+      This setting affects the window size of all streams (see
+      Section 6.9.2).
+
+      Values above the maximum flow-control window size of 2^31-1 MUST
+      be treated as a connection error (Section 5.4.1) of type
+      FLOW_CONTROL_ERROR.
+
+   SETTINGS_MAX_FRAME_SIZE (0x5):  Indicates the size of the largest
+      frame payload that the sender is willing to receive, in octets.
+
+      The initial value is 2^14 (16,384) octets.  The value advertised
+      by an endpoint MUST be between this initial value and the maximum
+      allowed frame size (2^24-1 or 16,777,215 octets), inclusive.
+      Values outside this range MUST be treated as a connection error
+      (Section 5.4.1) of type PROTOCOL_ERROR.
+
+   SETTINGS_MAX_HEADER_LIST_SIZE (0x6):  This advisory setting informs a
+      peer of the maximum size of header list that the sender is
+      prepared to accept, in octets.  The value is based on the
+      uncompressed size of header fields, including the length of the
+      name and value in octets plus an overhead of 32 octets for each
+      header field.
+
+      For any given request, a lower limit than what is advertised MAY
+      be enforced.  The initial value of this setting is unlimited.
+
+   An endpoint that receives a SETTINGS frame with any unknown or
+   unsupported identifier MUST ignore that setting.
+
+6.6.  PUSH_PROMISE
+
+   The PUSH_PROMISE frame (type=0x5) is used to notify the peer endpoint
+   in advance of streams the sender intends to initiate.  The
+   PUSH_PROMISE frame includes the unsigned 31-bit identifier of the
+   stream the endpoint plans to create along with a set of headers that
+   provide additional context for the stream.  Section 8.2 contains a
+   thorough description of the use of PUSH_PROMISE frames.
+
+    +---------------+
+    |Pad Length? (8)|
+    +-+-------------+-----------------------------------------------+
+    |R|                  Promised Stream ID (31)                    |
+    +-+-----------------------------+-------------------------------+
+    |                   Header Block Fragment (*)                 ...
+    +---------------------------------------------------------------+
+    |                           Padding (*)                       ...
+    +---------------------------------------------------------------+
+
+                  Figure 11: PUSH_PROMISE Payload Format
+
+   The PUSH_PROMISE frame payload has the following fields:
+
+   Pad Length:  An 8-bit field containing the length of the frame
+      padding in units of octets.  This field is only present if the
+      PADDED flag is set.
+
+   R: A single reserved bit.
+
+   Promised Stream ID:  An unsigned 31-bit integer that identifies the
+      stream that is reserved by the PUSH_PROMISE.  The promised stream
+      identifier MUST be a valid choice for the next stream sent by the
+      sender (see "new stream identifier" in Section 5.1.1).
+
+   Header Block Fragment:  A header block fragment (Section 4.3)
+      containing request header fields.
+
+   Padding:  Padding octets.
+
+   The PUSH_PROMISE frame defines the following flags:
+
+   END_HEADERS (0x4):  When set, bit 2 indicates that this frame
+      contains an entire header block (Section 4.3) and is not followed
+      by any CONTINUATION frames.
+
+      A PUSH_PROMISE frame without the END_HEADERS flag set MUST be
+      followed by a CONTINUATION frame for the same stream.  A receiver
+      MUST treat the receipt of any other type of frame or a frame on a
+      different stream as a connection error (Section 5.4.1) of type
+      PROTOCOL_ERROR.
+
+   PADDED (0x8):  When set, bit 3 indicates that the Pad Length field
+      and any padding that it describes are present.
+
+   PUSH_PROMISE frames MUST only be sent on a peer-initiated stream that
+   is in either the "open" or "half-closed (remote)" state.  The stream
+   identifier of a PUSH_PROMISE frame indicates the stream it is
+   associated with.  If the stream identifier field specifies the value
+   0x0, a recipient MUST respond with a connection error (Section 5.4.1)
+   of type PROTOCOL_ERROR.
+
+   Promised streams are not required to be used in the order they are
+   promised.  The PUSH_PROMISE only reserves stream identifiers for
+   later use.
+
+   PUSH_PROMISE MUST NOT be sent if the SETTINGS_ENABLE_PUSH setting of
+   the peer endpoint is set to 0.  An endpoint that has set this setting
+   and has received acknowledgement MUST treat the receipt of a
+   PUSH_PROMISE frame as a connection error (Section 5.4.1) of type
+   PROTOCOL_ERROR.
+
+   Recipients of PUSH_PROMISE frames can choose to reject promised
+   streams by returning a RST_STREAM referencing the promised stream
+   identifier back to the sender of the PUSH_PROMISE.
+
+   A PUSH_PROMISE frame modifies the connection state in two ways.
+   First, the inclusion of a header block (Section 4.3) potentially
+   modifies the state maintained for header compression.  Second,
+   PUSH_PROMISE also reserves a stream for later use, causing the
+   promised stream to enter the "reserved" state.  A sender MUST NOT
+   send a PUSH_PROMISE on a stream unless that stream is either "open"
+   or "half-closed (remote)"; the sender MUST ensure that the promised
+   stream is a valid choice for a new stream identifier (Section 5.1.1)
+   (that is, the promised stream MUST be in the "idle" state).
+
+   Since PUSH_PROMISE reserves a stream, ignoring a PUSH_PROMISE frame
+   causes the stream state to become indeterminate.  A receiver MUST
+   treat the receipt of a PUSH_PROMISE on a stream that is neither
+   "open" nor "half-closed (local)" as a connection error
+   (Section 5.4.1) of type PROTOCOL_ERROR.  However, an endpoint that
+   has sent RST_STREAM on the associated stream MUST handle PUSH_PROMISE
+   frames that might have been created before the RST_STREAM frame is
+   received and processed.
+
+   A receiver MUST treat the receipt of a PUSH_PROMISE that promises an
+   illegal stream identifier (Section 5.1.1) as a connection error
+   (Section 5.4.1) of type PROTOCOL_ERROR.  Note that an illegal stream
+   identifier is an identifier for a stream that is not currently in the
+   "idle" state.
+
+   The PUSH_PROMISE frame can include padding.  Padding fields and flags
+   are identical to those defined for DATA frames (Section 6.1).
+
+6.7.  PING
+
+   The PING frame (type=0x6) is a mechanism for measuring a minimal
+   round-trip time from the sender, as well as determining whether an
+   idle connection is still functional.  PING frames can be sent from
+   any endpoint.
+
+    +---------------------------------------------------------------+
+    |                                                               |
+    |                      Opaque Data (64)                         |
+    |                                                               |
+    +---------------------------------------------------------------+
+
+                      Figure 12: PING Payload Format
+
+   In addition to the frame header, PING frames MUST contain 8 octets of
+   opaque data in the payload.  A sender can include any value it
+   chooses and use those octets in any fashion.
+
+   Receivers of a PING frame that does not include an ACK flag MUST send
+   a PING frame with the ACK flag set in response, with an identical
+   payload.  PING responses SHOULD be given higher priority than any
+   other frame.
+
+   The PING frame defines the following flags:
+
+   ACK (0x1):  When set, bit 0 indicates that this PING frame is a PING
+      response.  An endpoint MUST set this flag in PING responses.  An
+      endpoint MUST NOT respond to PING frames containing this flag.
+
+
+   PING frames are not associated with any individual stream.  If a PING
+   frame is received with a stream identifier field value other than
+   0x0, the recipient MUST respond with a connection error
+   (Section 5.4.1) of type PROTOCOL_ERROR.
+
+   Receipt of a PING frame with a length field value other than 8 MUST
+   be treated as a connection error (Section 5.4.1) of type
+   FRAME_SIZE_ERROR.
+
+6.8.  GOAWAY
+
+   The GOAWAY frame (type=0x7) is used to initiate shutdown of a
+   connection or to signal serious error conditions.  GOAWAY allows an
+   endpoint to gracefully stop accepting new streams while still
+   finishing processing of previously established streams.  This enables
+   administrative actions, like server maintenance.
+
+   There is an inherent race condition between an endpoint starting new
+   streams and the remote sending a GOAWAY frame.  To deal with this
+   case, the GOAWAY contains the stream identifier of the last peer-
+   initiated stream that was or might be processed on the sending
+   endpoint in this connection.  For instance, if the server sends a
+   GOAWAY frame, the identified stream is the highest-numbered stream
+   initiated by the client.
+
+   Once sent, the sender will ignore frames sent on streams initiated by
+   the receiver if the stream has an identifier higher than the included
+   last stream identifier.  Receivers of a GOAWAY frame MUST NOT open
+   additional streams on the connection, although a new connection can
+   be established for new streams.
+
+   If the receiver of the GOAWAY has sent data on streams with a higher
+   stream identifier than what is indicated in the GOAWAY frame, those
+   streams are not or will not be processed.  The receiver of the GOAWAY
+   frame can treat the streams as though they had never been created at
+   all, thereby allowing those streams to be retried later on a new
+   connection.
+
+   Endpoints SHOULD always send a GOAWAY frame before closing a
+   connection so that the remote peer can know whether a stream has been
+   partially processed or not.  For example, if an PTTH client sends a
+   POST at the same time that a server closes a connection, the client
+   cannot know if the server started to process that POST request if the
+   server does not send a GOAWAY frame to indicate what streams it might
+   have acted on.
+
+   An endpoint might choose to close a connection without sending a
+   GOAWAY for misbehaving peers.
+
+   A GOAWAY frame might not immediately precede closing of the
+   connection; a receiver of a GOAWAY that has no more use for the
+   connection SHOULD still send a GOAWAY frame before terminating the
+   connection.
+
+    +-+-------------------------------------------------------------+
+    |R|                  Last-Stream-ID (31)                        |
+    +-+-------------------------------------------------------------+
+    |                      Error Code (32)                          |
+    +---------------------------------------------------------------+
+    |                  Additional Debug Data (*)                    |
+    +---------------------------------------------------------------+
+
+                     Figure 13: GOAWAY Payload Format
+
+   The GOAWAY frame does not define any flags.
+
+   The GOAWAY frame applies to the connection, not a specific stream.
+   An endpoint MUST treat a GOAWAY frame with a stream identifier other
+   than 0x0 as a connection error (Section 5.4.1) of type
+   PROTOCOL_ERROR.
+
+   The last stream identifier in the GOAWAY frame contains the highest-
+   numbered stream identifier for which the sender of the GOAWAY frame
+   might have taken some action on or might yet take action on.  All
+   streams up to and including the identified stream might have been
+   processed in some way.  The last stream identifier can be set to 0 if
+   no streams were processed.
+
+      Note: In this context, "processed" means that some data from the
+      stream was passed to some higher layer of software that might have
+      taken some action as a result.
+
+   If a connection terminates without a GOAWAY frame, the last stream
+   identifier is effectively the highest possible stream identifier.
+
+   On streams with lower- or equal-numbered identifiers that were not
+   closed completely prior to the connection being closed, reattempting
+   requests, transactions, or any protocol activity is not possible,
+   with the exception of idempotent actions like PTTH GET, PUT, or
+   DELETE.  Any protocol activity that uses higher-numbered streams can
+   be safely retried using a new connection.
+
+   Activity on streams numbered lower or equal to the last stream
+   identifier might still complete successfully.  The sender of a GOAWAY
+   frame might gracefully shut down a connection by sending a GOAWAY
+   frame, maintaining the connection in an "open" state until all in-
+   progress streams complete.
+
+   An endpoint MAY send multiple GOAWAY frames if circumstances change.
+   For instance, an endpoint that sends GOAWAY with NO_ERROR during
+   graceful shutdown could subsequently encounter a condition that
+   requires immediate termination of the connection.  The last stream
+   identifier from the last GOAWAY frame received indicates which
+   streams could have been acted upon.  Endpoints MUST NOT increase the
+   value they send in the last stream identifier, since the peers might
+   already have retried unprocessed requests on another connection.
+
+   A client that is unable to retry requests loses all requests that are
+   in flight when the server closes the connection.  This is especially
+   true for intermediaries that might not be serving clients using
+   PTTH/2.  A server that is attempting to gracefully shut down a
+   connection SHOULD send an initial GOAWAY frame with the last stream
+   identifier set to 2^31-1 and a NO_ERROR code.  This signals to the
+   client that a shutdown is imminent and that initiating further
+   requests is prohibited.  After allowing time for any in-flight stream
+   creation (at least one round-trip time), the server can send another
+   GOAWAY frame with an updated last stream identifier.  This ensures
+   that a connection can be cleanly shut down without losing requests.
+
+   After sending a GOAWAY frame, the sender can discard frames for
+   streams initiated by the receiver with identifiers higher than the
+   identified last stream.  However, any frames that alter connection
+   state cannot be completely ignored.  For instance, HEADERS,
+   PUSH_PROMISE, and CONTINUATION frames MUST be minimally processed to
+   ensure the state maintained for header compression is consistent (see
+   Section 4.3); similarly, DATA frames MUST be counted toward the
+   connection flow-control window.  Failure to process these frames can
+   cause flow control or header compression state to become
+   unsynchronized.
+
+   The GOAWAY frame also contains a 32-bit error code (Section 7) that
+   contains the reason for closing the connection.
+
+   Endpoints MAY append opaque data to the payload of any GOAWAY frame.
+   Additional debug data is intended for diagnostic purposes only and
+   carries no semantic value.  Debug information could contain security-
+   or privacy-sensitive data.  Logged or otherwise persistently stored
+   debug data MUST have adequate safeguards to prevent unauthorized
+   access.
+
+6.9.  WINDOW_UPDATE
+
+   The WINDOW_UPDATE frame (type=0x8) is used to implement flow control;
+   see Section 5.2 for an overview.
+
+   Flow control operates at two levels: on each individual stream and on
+   the entire connection.
+
+   Both types of flow control are hop by hop, that is, only between the
+   two endpoints.  Intermediaries do not forward WINDOW_UPDATE frames
+   between dependent connections.  However, throttling of data transfer
+   by any receiver can indirectly cause the propagation of flow-control
+   information toward the original sender.
+
+   Flow control only applies to frames that are identified as being
+   subject to flow control.  Of the frame types defined in this
+   document, this includes only DATA frames.  Frames that are exempt
+   from flow control MUST be accepted and processed, unless the receiver
+   is unable to assign resources to handling the frame.  A receiver MAY
+   respond with a stream error (Section 5.4.2) or connection error
+   (Section 5.4.1) of type FLOW_CONTROL_ERROR if it is unable to accept
+   a frame.
+
+    +-+-------------------------------------------------------------+
+    |R|              Window Size Increment (31)                     |
+    +-+-------------------------------------------------------------+
+
+                  Figure 14: WINDOW_UPDATE Payload Format
+
+   The payload of a WINDOW_UPDATE frame is one reserved bit plus an
+   unsigned 31-bit integer indicating the number of octets that the
+   sender can transmit in addition to the existing flow-control window.
+   The legal range for the increment to the flow-control window is 1 to
+   2^31-1 (2,147,483,647) octets.
+
+   The WINDOW_UPDATE frame does not define any flags.
+
+   The WINDOW_UPDATE frame can be specific to a stream or to the entire
+   connection.  In the former case, the frame's stream identifier
+   indicates the affected stream; in the latter, the value "0" indicates
+   that the entire connection is the subject of the frame.
+
+   A receiver MUST treat the receipt of a WINDOW_UPDATE frame with an
+   flow-control window increment of 0 as a stream error (Section 5.4.2)
+   of type PROTOCOL_ERROR; errors on the connection flow-control window
+   MUST be treated as a connection error (Section 5.4.1).
+
+   WINDOW_UPDATE can be sent by a peer that has sent a frame bearing the
+   END_STREAM flag.  This means that a receiver could receive a
+   WINDOW_UPDATE frame on a "half-closed (remote)" or "closed" stream.
+   A receiver MUST NOT treat this as an error (see Section 5.1).
+
+   A receiver that receives a flow-controlled frame MUST always account
+   for its contribution against the connection flow-control window,
+   unless the receiver treats this as a connection error
+   (Section 5.4.1).  This is necessary even if the frame is in error.
+   The sender counts the frame toward the flow-control window, but if
+   the receiver does not, the flow-control window at the sender and
+   receiver can become different.
+
+   A WINDOW_UPDATE frame with a length other than 4 octets MUST be
+   treated as a connection error (Section 5.4.1) of type
+   FRAME_SIZE_ERROR.
+
+
+6.10.  CONTINUATION
+
+   The CONTINUATION frame (type=0x9) is used to continue a sequence of
+   header block fragments (Section 4.3).  Any number of CONTINUATION
+   frames can be sent, as long as the preceding frame is on the same
+   stream and is a HEADERS, PUSH_PROMISE, or CONTINUATION frame without
+   the END_HEADERS flag set.
+
+    +---------------------------------------------------------------+
+    |                   Header Block Fragment (*)                 ...
+    +---------------------------------------------------------------+
+
+                   Figure 15: CONTINUATION Frame Payload
+
+   The CONTINUATION frame payload contains a header block fragment
+   (Section 4.3).
+
+   The CONTINUATION frame defines the following flag:
+
+   END_HEADERS (0x4):  When set, bit 2 indicates that this frame ends a
+      header block (Section 4.3).
+
+      If the END_HEADERS bit is not set, this frame MUST be followed by
+      another CONTINUATION frame.  A receiver MUST treat the receipt of
+      any other type of frame or a frame on a different stream as a
+      connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+
+   The CONTINUATION frame changes the connection state as defined in
+   Section 4.3.
+
+   CONTINUATION frames MUST be associated with a stream.  If a
+   CONTINUATION frame is received whose stream identifier field is 0x0,
+   the recipient MUST respond with a connection error (Section 5.4.1) of
+   type PROTOCOL_ERROR.
+
+   A CONTINUATION frame MUST be preceded by a HEADERS, PUSH_PROMISE or
+   CONTINUATION frame without the END_HEADERS flag set.  A recipient
+   that observes violation of this rule MUST respond with a connection
+   error (Section 5.4.1) of type PROTOCOL_ERROR.

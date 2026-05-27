@@ -1,0 +1,25 @@
+typedef struct _TypeOfService {
+  UINT8BE Precedence:3;
+  UINT8BE Delay:1;
+  UINT8BE Throughput:1;
+  UINT8BE Reliability:1;
+  UINT8BE Reserved:2 { Reserved == 0 };
+} TypeOfService;
+
+entrypoint typedef struct _IPv4Header {
+  UINT8BE Version: 4 { Version == 4 };
+  UINT8BE IHL: 4{ IHL >= 5 && IHL*4 == sizeof(this) };
+  TypeOfService TOS;
+  UINT16BE TotalLength { TotalLength >= IHL * 4 };
+  UINT16BE Identification;
+  UINT16BE ReservedFlag: 1 { ReservedFlag == 0 };
+  UINT16BE DF: 1; // Don't Fragment
+  UINT16BE MF: 1; // More Fragments
+  UINT16BE FragmentOffset: 13;
+  UINT8BE TTL;
+  UINT8BE Protocol; // Can't further specify Protocol here due to it being a reference to another RFC and not in RFC 791 itself.
+  UINT16BE HeaderChecksum;
+  UINT32BE SourceAddress;
+  UINT32BE DestinationAddress;
+// packet parser implementations usually ignore the content of options and padding, like gvisor, wireshark, etc., so we just omit them here.
+} IPv4Header;

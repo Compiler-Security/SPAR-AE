@@ -1,0 +1,258 @@
+// Zero struct for padding bytes
+typedef struct Zero {
+  UINT8BE Zero { Zero == 0 };
+} Zero;
+
+typedef struct _StreamID(UINT32BE Type) {
+    UINT32BE Reserved: 1 { Reserved == 0 };
+    UINT32BE StreamIdentifier: 31 {
+      (Type == 0x0) && (StreamIdentifier != 0) ||
+      (Type == 0x4 || Type == 0x6 || Type == 0x7) && (StreamIdentifier == 0) ||
+      (Type == 0x8) ||
+      (Type == 0x1 || Type == 0x2 || Type == 0x3 || Type == 0x5 || Type == 0x9) && (StreamIdentifier != 0) ||
+      (Type != 0x0 && Type != 0x1 && Type != 0x2 && Type != 0x3 && Type != 0x4 && Type != 0x5 && Type != 0x6 && Type != 0x7 && Type != 0x8 && Type != 0x9)
+    };
+} StreamID;
+
+typedef struct _PromisedStreamID {
+    UINT32BE Reserved: 1 { Reserved == 0 };
+    UINT32BE PromisedStreamIdentifier: 31 { PromisedStreamIdentifier != 0 };
+} PromisedStreamID;
+
+typedef struct _PaddedDataBody(UINT32BE Length) {
+    UINT8BE PadLength { PadLength < Length };
+    UINT8BE Data[:byte-size Length - PadLength - 1];
+    Zero Padding[:byte-size PadLength];
+} PaddedDataBody;
+
+typedef struct _RegularDataBody(UINT32BE Length) {
+    UINT8BE Data[:byte-size Length];
+} RegularDataBody;
+
+casetype _DataPayload(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: PaddedDataBody(Length) padded;
+        case 0: RegularDataBody(Length) regular;
+    }
+} DataPayload;
+
+typedef struct _HeadersFull(UINT32BE Length) where (Length >= 6) {
+    UINT8BE PadLength { PadLength < Length - 5 };
+    UINT32BE Exclusive: 1;
+    UINT32BE StreamDependency: 31;
+    UINT8BE Weight;
+    UINT8BE HeaderBlockFragment[:byte-size Length - PadLength - 6];
+    UINT8BE Padding[:byte-size PadLength];
+} HeadersFull;
+
+typedef struct _HeadersPadded(UINT32BE Length) where (Length >= 1) {
+    UINT8BE PadLength { PadLength < Length };
+    UINT8BE HeaderBlockFragment[:byte-size Length - PadLength - 1];
+    UINT8BE Padding[:byte-size PadLength];
+} HeadersPadded;
+
+typedef struct _HeadersPriority(UINT32BE Length) where (Length >= 5) {
+    UINT32BE Exclusive: 1;
+    UINT32BE StreamDependency: 31;
+    UINT8BE Weight;
+    UINT8BE HeaderBlockFragment[:byte-size Length - 5];
+} HeadersPriority;
+
+typedef struct _HeadersBasic(UINT32BE Length) {
+    UINT8BE HeaderBlockFragment[:byte-size Length];
+} HeadersBasic;
+
+casetype _HeadersPriPad(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: HeadersFull(Length) full;
+        case 0: HeadersPriority(Length) priorityOnly;
+    }
+} HeadersPriPad;
+
+casetype _HeadersNoPriPad(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: HeadersPadded(Length) paddedOnly;
+        case 0: HeadersBasic(Length) basic;
+    }
+} HeadersNoPriPad;
+
+casetype _HeadersPayload(UINT8BE Priority, UINT8BE Padded, UINT32BE Length) {
+    switch(Priority) {
+        case 1: HeadersPriPad(Padded, Length) withPriority;
+        case 0: HeadersNoPriPad(Padded, Length) noPriority;
+    }
+} HeadersPayload;
+
+typedef struct _DataFrame(UINT32BE Type, UINT32BE Length) {
+    UINT8BE Reserved1: 4;
+    UINT8BE Padded: 1;
+    UINT8BE Reserved2: 2;
+    UINT8BE EndStream: 1;
+    StreamID(Type) streamID;
+    DataPayload(Padded, Length) payload;
+} DataFrame;
+
+typedef struct _HeadersFrame(UINT32BE Length) {
+    UINT8BE Reserved1: 2;
+    UINT8BE Priority: 1;
+    UINT8BE Reserved2: 1;
+    UINT8BE Padded: 1;
+    UINT8BE EndHeaders: 1;
+    UINT8BE Reserved3: 1;
+    UINT8BE EndStream: 1;
+    StreamID(1) streamID;
+    HeadersPayload(Priority, Padded, Length) payload;
+} HeadersFrame;
+
+typedef struct _PriorityPayload(UINT32BE Length) where (Length == 5) {
+    UINT32BE Exclusive: 1;
+    UINT32BE StreamDependency: 31;
+    UINT8BE Weight;
+} PriorityPayload;
+
+typedef struct _PriorityFrame(UINT32BE Type, UINT32BE Length) {
+    UINT8BE Reserved;
+    StreamID(Type) streamID;
+    PriorityPayload(Length) payload;
+} PriorityFrame;
+
+typedef struct _RSTStreamFrame(UINT32BE Type, UINT32BE Length) where (Length == 4) {
+    UINT8BE Reserved;
+    StreamID(Type) streamID;
+    UINT32BE ErrorCode;
+} RSTStreamFrame;
+
+typedef struct _SettingsAck {
+  unit Empty;
+} SettingsAck;
+
+typedef struct _StreamIDZero {
+  UINT32BE Reserved: 1 { Reserved == 0 };
+  UINT32BE StreamIdentifier: 31 { StreamIdentifier == 0 };
+} StreamIDZero;
+
+typedef struct _SettingsParameter {
+    UINT16BE Identifier {
+        Identifier == 1 ||
+        Identifier == 2 || 
+        Identifier == 3 || 
+        Identifier == 4 || 
+        Identifier == 5 || 
+        Identifier == 6    
+    };
+    UINT32BE Value {
+        (Identifier != 2) || (Value == 0) || (Value == 1)
+        && ((Identifier != 4) || (Value <= 2147483647))
+        && ((Identifier != 5) || (Value >= 16384 && Value <= 16777215))
+    };
+} SettingsParameter;
+
+typedef struct _SettingsList(UINT32BE Length) where (Length % 6 == 0) {
+    SettingsParameter settings[:byte-size Length];
+} SettingsList;
+
+casetype _SettingsPayload(UINT8BE Ack, UINT32BE Length) {
+    switch(Ack) {
+        case 1: SettingsAck ack { Length == 0 };
+        case 0: SettingsList(Length) list;
+    }
+} SettingsPayload;
+
+typedef struct _SettingsFrame(UINT32BE Length) {
+    UINT8BE Reserved: 7;
+    UINT8BE Ack: 1;
+    StreamIDZero streamID;
+    SettingsPayload(Ack, Length) payload;
+} SettingsFrame;
+
+typedef struct _PushPromisePadded(UINT32BE Length) where (Length >= 5) {
+    UINT8BE PadLength { PadLength < Length - 4 };
+    PromisedStreamID promisedStreamID;
+    UINT8BE HeaderBlockFragment[:byte-size Length - PadLength - 5];
+    Zero Padding[:byte-size PadLength];
+} PushPromisePadded;
+
+typedef struct _PushPromiseBasic(UINT32BE Length) where (Length >= 4) {
+    PromisedStreamID promisedStreamID;
+    UINT8BE HeaderBlockFragment[:byte-size Length - 4];
+} PushPromiseBasic;
+
+casetype _PushPromisePayload(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: PushPromisePadded(Length) padded;
+        case 0: PushPromiseBasic(Length) basic;
+    }
+} PushPromisePayload;
+
+typedef struct _PushPromiseFrame(UINT32BE Type, UINT32BE Length) {
+    UINT8BE Reserved1: 4;
+    UINT8BE EndHeaders: 1;
+    UINT8BE Reserved2: 2;
+    UINT8BE Padded: 1;
+    StreamID(Type) streamID;
+    PushPromisePayload(Padded, Length) payload;
+} PushPromiseFrame;
+
+typedef struct _PingPayload {
+    UINT8BE OpaqueData[8];
+} PingPayload;
+
+typedef struct _PingFrame(UINT32BE Length) where (Length == 8) {
+    UINT8BE Reserved: 7;
+    UINT8BE Ack: 1;
+    StreamIDZero streamID;
+    PingPayload payload;
+} PingFrame;
+
+typedef struct _GoawayPayload(UINT32BE Length) where (Length >= 8) {
+    UINT32BE Reserved: 1 { Reserved == 0 };
+    UINT32BE LastStreamID: 31;
+    UINT32BE ErrorCode;
+    UINT8BE DebugData[:byte-size Length - 8];
+} GoawayPayload;
+
+typedef struct _GoawayFrame(UINT32BE Length) {
+    UINT8BE Reserved;
+    StreamIDZero streamID;
+    GoawayPayload(Length) payload;
+} GoawayFrame;
+
+typedef struct _WindowUpdatePayload {
+    UINT32BE Reserved: 1 { Reserved == 0 };
+    UINT32BE WindowSizeIncrement: 31 { WindowSizeIncrement >= 1 && WindowSizeIncrement <= 2147483647 };
+} WindowUpdatePayload;
+
+typedef struct _WindowUpdateFrame(UINT32BE Type, UINT32BE Length) where (Length == 4) {
+    UINT8BE Reserved;
+    StreamID(Type) streamID;
+    WindowUpdatePayload payload;
+} WindowUpdateFrame;
+
+typedef struct _ContinuationFrame(UINT32BE Type, UINT32BE Length) {
+    UINT8BE Reserved1: 5;
+    UINT8BE EndHeaders: 1;
+    UINT8BE Reserved2: 2;
+    StreamID(Type) streamID;
+    UINT8BE HeaderBlockFragment[:byte-size Length];
+} ContinuationFrame;
+
+casetype _FrameBody(UINT32BE Type, UINT32BE Length) {
+    switch(Type) {
+      case 0: DataFrame(Type, Length) data;
+      case 1: HeadersFrame(Length) headers;
+      case 2: PriorityFrame(Type, Length) priority;
+      case 3: RSTStreamFrame(Type, Length) rst_stream;
+      case 4: SettingsFrame(Length) settings;
+      case 5: PushPromiseFrame(Type, Length) pushPromise;
+      case 6: PingFrame(Length) ping;
+      case 7: GoawayFrame(Length) goaway;
+      case 8: WindowUpdateFrame(Type, Length) window_update;
+      case 9: ContinuationFrame(Type, Length) continuation;
+    }
+} FrameBody;
+
+entrypoint typedef struct _HTTP2Frame {
+    UINT32BE Length: 24;
+    UINT32BE Type: 8;
+    FrameBody(Type, Length) body;
+} HTTP2Frame;

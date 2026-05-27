@@ -1,0 +1,231 @@
+typedef struct _SupportedAddressTypes {
+  UINT16BE Length { Length >= 4 };
+  UINT16BE SupportedAddressTypes[:byte-size Length - 4];
+} SupportedAddressTypes;
+
+typedef struct _HostNameAddress {
+  UINT16BE Length { Length >= 4 && Length == (sizeof(this) + 2) };
+  UINT8BE HostName[:byte-size Length - 4];
+} HostNameAddress;
+
+typedef struct _CookiePreservative {
+  UINT16BE Length { Length == 8 };
+  UINT32BE SuggestedCookieLifeSpan;
+} CookiePreservative;
+
+typedef struct _IPv6AddressParam {
+  UINT16BE Length { Length == 20 };
+  UINT8BE IPv6Address[16];
+} IPv6AddressParam;
+
+typedef struct _IPv4AddressParam {
+  UINT16BE Length { Length == 5 };
+  UINT32BE IPv4Address;
+} IPv4AddressParam;
+
+casetype _OptionalTLVBodyInit(UINT16BE Type){
+  switch (Type) {
+    case 5: IPv4AddressParam ipv4AddressParam;
+    case 6: IPv6AddressParam ipv6AddressParam;
+    case 9: CookiePreservative cookiePreservative;
+    case 11: HostNameAddress hostNameAddress;
+    case 12: SupportedAddressTypes supportedAddressTypes;
+  }
+} OptionalTLVBodyInit;
+
+typedef struct _StateCookie {
+  UINT16BE Length { Length >= 4 && Length == (sizeof(this) + 2) };
+  UINT8BE CookieData[:byte-size Length - 4];
+} StateCookie;
+
+typedef struct _UnrecognizedParam {
+  UINT16BE Type;
+  UINT16BE Length { Length >= 4 && Length == (sizeof(this) + 2) };
+  UINT8BE Value[:byte-size Length - 4];
+} UnrecognizedParam;
+
+typedef struct _OptionalTLVInit {
+  UINT16BE Type { Type == 5 || Type == 6 || Type == 9 || Type == 11 || Type == 12 };
+  OptionalTLVBodyInit(Type) body;
+} OptionalTLVInit;
+
+casetype _OptionalTLVBodyInitAck(UINT16BE Type){
+  switch (Type) {
+    case 5: IPv4AddressParam ipv4AddressParam;
+    case 6: IPv6AddressParam ipv6AddressParam;
+    case 7: StateCookie stateCookie;
+    case 8: UnrecognizedParam unrecognizedParam;
+    case 11: HostNameAddress hostNameAddress;
+    case 12: SupportedAddressTypes supportedAddressTypes;
+  }
+} OptionalTLVBodyInitAck;
+
+typedef struct _HeartbeatInfo {
+  UINT16BE Length { Length >= 4 && Length == (sizeof(this) + 2) };
+  UINT8BE HeartbeatData[:byte-size Length - 4];
+} HeartbeatInfo;
+
+typedef struct _OptionalTLVInitAck {
+  UINT16BE Type { Type == 5 || Type == 6 || Type == 7 || Type == 8 || Type == 11 };
+  OptionalTLVBodyInitAck(Type) body;
+} OptionalTLVInitAck;
+
+casetype _ErrorCauseInfo(UINT16BE CauseCode, UINT16BE Length){
+  switch (CauseCode) {
+    case 1: struct {
+      UINT16BE StreamID { Length == 8 };
+      UINT16BE Reserved { Reserved == 0 };
+    } InvalidStreamIdentifier;
+    case 2: struct {
+      UINT32BE NumberOfMissingParams { Length >= 8 && (Length - 8) % 2 == 0 };
+      UINT16BE MissingParamTypes[:byte-size Length - 8];
+    } MissingMandatoryParameter;
+    case 3: struct {
+      UINT32BE MeasureOfStaleness { Length == 8 };
+    } StaleCookieError;
+    case 4: struct {
+      unit Empty { Length == 4 };
+    } OutOfResource;
+    case 5: struct {
+      unit Empty { Length >= 4 };
+      UINT8BE UnresolvableAddress[:byte-size Length - 4];
+    } UnresolvableAddress;
+    case 6: struct {
+      unit Empty { Length >= 4 };
+      UINT8BE UnrecognizedChunks[:byte-size Length - 4];
+    } UnrecognizedChunkType;
+    case 7: struct {
+      unit Empty { Length == 4 };
+    } InvalidMandatoryParameter;
+    case 8: struct {
+      unit Empty { Length >= 4 };
+      UINT8BE UnrecognizedParameters[:byte-size Length - 4];
+    } UnrecognizedParameter;
+    case 9: struct {
+      unit Empty { Length == 8 };
+      UINT32BE TSNValue;
+    } NoUserData;
+    case 10: struct {
+      unit Empty { Length == 4 };
+    } CookieReceivedWhileShuttingDown;
+    case 11: struct {
+      unit Empty { Length >= 4 };
+      UINT8BE NewAddressTLVs[:byte-size Length - 4];
+    } RestartOfAnAssociationWithNewAddresses;
+    case 12: struct {
+      unit Empty { Length >= 4 };
+      UINT8BE AdditionalInformation[:byte-size Length - 4];
+    } UserInitiatedAbort;
+  }
+} ErrorCauseInfo;
+
+casetype _ChunkRest(UINT8BE Type){
+  switch (Type) {
+    case 0: struct {
+      UINT8BE Reserved: 5 { Reserved == 0 };
+      UINT8BE U: 1;
+      UINT8BE B: 1;
+      UINT8BE E: 1;
+      UINT16BE Length { Length >= 16 && (Length - 16) % 4 == 0 }; // Padding to 4-byte boundary
+      UINT32BE TSN;
+      UINT16BE StreamID;
+      UINT16BE SSN;
+      UINT32BE PayloadProtocolID;
+      UINT8BE UserData[:byte-size Length - 16];
+    } DataChunk;
+    case 1: struct {
+      UINT8BE Flags;
+      UINT16BE Length { Length >= 20};
+      UINT32BE InitTag { InitTag != 0 };
+      UINT32BE A_RWND;
+      UINT16BE NumOutboundStreams { NumOutboundStreams != 0 };
+      UINT16BE NumInboundStreams { NumInboundStreams != 0 };
+      UINT32BE InitialTSN;
+      OptionalTLVInit OptionalParams[:byte-size Length - 20];
+    } InitChunk;
+    case 2: struct {
+      UINT8BE Flags;
+      UINT16BE Length { Length >= 20 };
+      UINT32BE InitTag { InitTag != 0 };
+      UINT32BE A_RWND;
+      UINT16BE NumOutboundStreams { NumOutboundStreams != 0 };
+      UINT16BE NumInboundStreams { NumInboundStreams != 0 };
+      UINT32BE InitialTSN;
+      StateCookie StateCookieField; // State Cookie, mandatory
+      // we cannot compute the size of OptionalParams accurately because StateCookie is variable length and 3d sucks, so we just assume there is no OptionalParams here.
+    } InitAckChunk;
+    case 3: struct {
+      UINT8BE Flags;
+      UINT16BE Length { Length >= 8 };
+      UINT32BE CumulativeTSN;
+      UINT32BE AdervtisedReceiverWindowCredit;
+      UINT16BE NumGapBlocks { NumGapBlocks <= 65535/4 }; // avoid overflow
+      UINT16BE NumDuplicateTSNs { NumDuplicateTSNs <= 65535/4 }; // avoid overflow
+      UINT32BE GapBlocks[:byte-size NumGapBlocks * 4];
+      UINT32BE DuplicateTSNs[:byte-size NumDuplicateTSNs * 4];
+    } SACKChunk;
+    case 4: struct {
+      UINT8BE Flags;
+      UINT16BE Length { Length >= 8 };
+      UINT16BE HeartBeatType { HeartBeatType == 1 };
+      HeartbeatInfo HeartbeatInfoField;
+    } HeartbeatChunk;
+    case 5: struct {
+      UINT8BE Flags;
+      UINT16BE Length { Length >= 8 };
+      UINT32BE HeartBeatType { HeartBeatType == 1 };
+      HeartbeatInfo HeartbeatInfoField;
+    } HeartbeatAckChunk;
+    case 6: struct {
+      UINT8BE Reserved: 7 { Reserved == 0 };
+      UINT8BE T: 1;
+      UINT16BE Length { Length >= 8 };
+      UINT32BE ErrorCauseCodes[:byte-size Length - 8];
+    } AbortChunk;
+    case 7: struct {
+      UINT8BE Flags { Flags == 0 };
+      UINT16BE Length { Length >= 8 };
+      UINT32BE CumulativeTSN;
+    } ShutdownChunk;
+    case 8: struct {
+      UINT8BE Flags { Flags == 0 };
+      UINT16BE Length { Length >= 4 };
+    } ShutdownAckChunk;
+    case 9: struct {
+      UINT8BE Flags { Flags == 0 };
+      UINT16BE Length { Length >= 8 };
+      // We will just put one ErrorCauseCode here, although there can be multiple ones.
+      UINT16BE ErrorCauseCode { ErrorCauseCode > 0 && ErrorCauseCode <= 13 };
+      UINT16BE ErrorCauseLength { ErrorCauseLength >= 4 };
+      UINT8BE ErrorCauseInfo[:byte-size ErrorCauseLength - 4];
+    } Error;
+    case 10: struct {
+      UINT8BE Flags { Flags == 0 };
+      UINT16BE Length { Length >= 4 };
+      UINT8BE CookieData[:byte-size Length - 4];
+    } CookieEchoChunk;
+    case 11: struct {
+      UINT8BE Flags { Flags == 0 };
+      UINT16BE Length { Length >= 4 };
+    } CookieAckChunk;
+    case 14: struct {
+      UINT8BE Reserved: 7 { Reserved == 0 };
+      UINT8BE T: 1;
+      UINT16BE Length { Length >= 4 };
+    } ShutdownCompleteChunk;
+  }
+}ChunkRest;
+
+typedef struct _Chunk {
+  UINT8BE ChunkType { ChunkType >= 0 && ChunkType <= 11 || ChunkType == 14 };
+  ChunkRest(ChunkType) chunkRest;
+} Chunk;
+
+entrypoint typedef struct _SCTPMessage(UINT32BE TotalLength) where TotalLength >= 12 {
+  UINT16BE SourcePortNumber;
+  UINT16BE DestinationPortNumber;
+  UINT32BE VerificationTag;
+  UINT32BE Checksum;
+  // Common Header do not include chunks
+  Chunk chunks[:byte-size TotalLength - 12];
+}SCTPMessage;

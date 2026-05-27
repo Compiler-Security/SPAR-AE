@@ -1,0 +1,18 @@
+entrypoint typedef struct _DHCPMessage{
+  UINT8BE op { op == 1 || op == 2 }; // 1 = BOOTREQUEST, 2 = BOOTREPLY
+  UINT8BE htype;
+  UINT8BE hlen { hlen <= 16 };
+  UINT8BE hops;
+  UINT32BE xid;
+  UINT16BE secs;
+  UINT16BE flags_broadcast:1;
+  UINT16BE flags_mbz:15 { flags_mbz == 0 };
+  UINT32BE ciaddr;
+  UINT32BE yiaddr;
+  UINT32BE siaddr;
+  UINT32BE giaddr;
+  UINT8BE chaddr[16];
+  UINT8BE sname[64];
+  UINT8BE file[128];
+  // omit options field since it is not included in RFC 2131
+}DHCPMessage;

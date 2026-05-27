@@ -1,0 +1,256 @@
+Example 1:
+###### Given the description:
+4.1. Format
+  All communications inside of the domain protocol are carried in a single
+  format called a message.  The top level format of message is divided
+  into 5 sections (some of which are empty in certain cases) shown below:
+      +---------------------+
+      |        Header       |
+      +---------------------+
+      |       Question      | the question for the name server
+      +---------------------+
+      |        Answer       | RRs answering the question
+      +---------------------+
+      |      Authority      | RRs pointing toward an authority
+      +---------------------+
+      |      Additional     | RRs holding additional information
+      +---------------------+
+  The header contains the following fields:
+                                    1  1  1  1  1  1
+      0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                      ID                       |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    QDCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    ANCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    NSCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    ARCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+  The header section is always present.  The header includes fields that
+  specify which of the remaining sections are present, and also specify
+  whether the message is a query or a response, a standard query or some
+  other opcode, etc.
+  The names of the sections after the header are derived from their use in
+  standard queries.  The question section contains fields that describe a
+  question to a name server.  These fields are a query type (QTYPE), a
+  query class (QCLASS), and a query domain name (QNAME).  The last three
+  sections have the same format: a possibly empty list of concatenated
+  resource records (RRs).  The answer section contains RRs that answer the
+  question; the authority section contains RRs that point toward an
+  authoritative name server; the additional records section contains RRs
+  which relate to the query, but are not strictly answers for the
+  question.
+#### Expected output:
+typedef struct _Question {
+  unit Empty; // placeholder for question structure
+} Question;
+
+casetype _QuestionPresent(UINT16BE QDCount) {
+  switch (QDCount) {
+    case 0: unit Empty;
+    case 1: Question question;
+  }
+} QuestionPresent;
+
+typedef struct _DNSQuestions(UINT16BE QDCount) where QDCount <= 1 {
+ // We only handle one question because 3D language is not capable of expressing struct arrays. Remember this when encountering similar cases.
+   QuestionPresent(QDCount) questionPresent;
+} DNSQuestions;
+
+typedef struct _DNSRR {
+  unit Empty; // placeholder for resource record structure
+} DNSRR;
+
+casetype _AnswerPresent(UINT16BE ANCount) {
+  switch (ANCount) {
+    case 0: unit Empty;
+    case 1: DNSRR answer;
+  }
+} AnswerPresent;
+
+casetype _AuthorityPresent(UINT16BE NSCount) {
+  switch (NSCount) {
+    case 0: unit Empty;
+    case 1: DNSRR authority;
+  }
+} AuthorityPresent;
+
+casetype _AdditionalPresent(UINT16BE ARCount) {
+  switch (ARCount) {
+    case 0: unit Empty;
+    case 1: DNSRR additional;
+  }
+} AdditionalPresent;
+
+entrypoint typedef struct _DNSMessage {
+  UINT16BE ID;
+  UINT16BE QR: 1;
+  UINT16BE Opcode: 4 { Opcode >= 0 && Opcode <= 2 };
+  UINT16BE AA: 1;
+  UINT16BE TC: 1;
+  UINT16BE RD: 1;
+  UINT16BE RA: 1;
+  UINT16BE Z: 3 { Z == 0 };
+  UINT16BE RCode: 4 { RCode >= 0 && RCode <= 5 };
+  UINT16BE QDCount;
+  UINT16BE ANCount;
+  UINT16BE NSCount;
+  UINT16BE ARCount;
+  DNSQuestions(QDCount) questions;
+  AnswerPresent(ANCount) answerPresent;
+  AuthorityPresent(NSCount) authorityPresent;
+  AdditionalPresent(ARCount) additionalPresent;
+}DNSMessage;
+
+  
+Example 2:
+###### Given the description:
+4.1.2. Question section format
+  The question section is used to carry the "question" in most queries,
+  i.e., the parameters that define what is being asked.  The section
+  contains QDCOUNT (usually 1) entries, each of the following format:
+
+                                      1  1  1  1  1  1
+        0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                                               |
+      /                     QNAME                     /
+      /                                               /
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                     QTYPE                     |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                     QCLASS                    |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+  where:
+
+  QNAME           a domain name represented as a sequence of labels, where
+                  each label consists of a length octet followed by that
+                  number of octets.  The domain name terminates with the
+                  zero length octet for the null label of the root.  Note
+                  that this field may be an odd number of octets; no
+                  padding is used.
+
+  QTYPE           a two octet code which specifies the type of the query.
+                  The values for this field include all codes valid for a
+                  TYPE field, together with some more general codes which
+                  can match more than one type of RR.
+
+  QCLASS          a two octet code that specifies the class of the query.
+                  For example, the QCLASS field is IN for the Internet.
+
+#### Expected output:
+// Remember to use DomainName and, together with it, DNSLabel and LastDNSLabel structs when you encounter QNAME or NAME fields in other places.
+typedef struct _DNSLabel {
+  UINT8BE Length { Length > 0 && Length <= 63 };
+  UINT8BE LabelData[:byte-size Length];
+} DNSLabel;
+
+typedef struct _LastDNSLabel {
+  UINT8BE Length { Length == 0 }; // zero-length label to terminate the domain name
+} LastDNSLabel;
+
+typedef struct _DomainName {
+  // QName consists of multiple labels ending with a zero-length label, but there is not any explicit count field. Another issue is 3d does not support arrays with struct type elements, and you can only use byte size. Here we just define one label and one last zero-length label. Remember to use DomainName struct when you encounter QNAME or NAME fields in other places.
+  DNSLabel label;
+  LastDNSLabel lastLabel;
+} DomainName;
+
+
+typedef struct _Question {
+  DomainName QNAME;
+  UINT16BE QTYPE;
+  UINT16BE QCLASS;
+} Question;
+
+Example 3:
+###### Given the description:
+4.1.3. Resource record format
+  The answer, authority, and additional sections all share the same
+  format: a variable number of resource records, where the number of
+  records is specified in the corresponding count field in the header.
+  Each resource record has the following format:
+                                      1  1  1  1  1  1
+        0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                                               |
+      /                                               /
+      /                      NAME                     /
+      |                                               |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                      TYPE                     |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                     CLASS                     |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                      TTL                      |
+      |                                               |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+      |                   RDLENGTH                    |
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--|
+      /                     RDATA                     /
+      /                                               /
+      +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+  where:
+
+  NAME            a domain name to which this resource record pertains.
+
+  TYPE            two octets containing one of the RR type codes.  This
+                  field specifies the meaning of the data in the RDATA
+                  field.
+
+  CLASS           two octets which specify the class of the data in the
+                  RDATA field.
+
+  TTL             a 32 bit unsigned integer that specifies the time
+                  interval (in seconds) that the resource record may be
+                  cached before it should be discarded.  Zero values are
+                  interpreted to mean that the RR can only be used for the
+                  transaction in progress, and should not be cached.
+
+  RDLENGTH        an unsigned 16 bit integer that specifies the length in
+                  octets of the RDATA field.
+
+  RDATA           a variable length string of octets that describes the
+                  resource.  The format of this information varies
+                  according to the TYPE and CLASS of the resource record.
+                  For example, the if the TYPE is A and the CLASS is IN,
+                  the RDATA field is a 4 octet ARPA Internet address.
+#### Expected output:
+typedef struct _QNAME {
+  unit Empty; // placeholder for domain name structure. Remember to replace with DomainName struct when you encounter QNAME or NAME fields in other places.
+}QNAME;
+
+casetype _RData(UINT16BE TYPE, UINT16BE CLASS, UINT16BE RDLENGTH) {
+  // We cannot define RDATA field properly here because its format varies according to TYPE and CLASS fields. So we just define it as an empty struct here as a placeholder.
+  switch (TYPE) {
+    case 1: unit Empty; // TYPE A
+    case 2: unit Empty; // TYPE NS
+    case 5: unit Empty; // TYPE CNAME
+    case 6: unit Empty; // TYPE SOA
+    case 12: unit Empty; // TYPE PTR
+    case 15: unit Empty; // TYPE MX
+    case 16: unit Empty; // TYPE TXT
+    case 28: unit Empty; // TYPE AAAA
+  }
+} RData;
+
+typedef struct _RDATAStruct(UINT16BE TYPE, UINT16BE CLASS, UINT16BE RDLENGTH) where (RDLENGTH == sizeof(this)) {
+  RData(TYPE, CLASS, RDLENGTH) rdata;
+} RDATAStruct;
+
+typedef struct _DNSRR {
+  QNAME NAME;
+  UINT16BE TYPE;
+  UINT16BE CLASS;
+  UINT32BE TTL;
+  UINT16BE RDLENGTH;
+  RDATAStruct(TYPE, CLASS, RDLENGTH) RDATA;
+} DNSRR;
+
+REMEMBER: Never attempt to define DomainName recursively, as it may lead to infinite recursion and is not naturally supported in 3D language. Always define it with a fixed number of labels and a terminating zero-length label. YOU MUST use DomainName struct when you encounter QNAME or NAME fields in other places.

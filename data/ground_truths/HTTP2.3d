@@ -1,0 +1,291 @@
+// --- Basic Types ---
+
+typedef struct _StreamID {
+    UINT32BE Reserved: 1;
+    UINT32BE ID: 31 { ID != 0 };
+} StreamID;
+
+// For frames that require Stream ID 0 (SETTINGS, PING, GOAWAY) [cite: 233, 635, 721, 742]
+typedef struct _StreamIDZero {
+    UINT32BE Reserved: 1;
+    UINT32BE ID: 31 { ID == 0 };
+} StreamIDZero;
+
+// --- Frame Payload Definitions ---
+
+// 1. DATA Frame (Type 0x0) [cite: 536]
+typedef struct _PaddedDataBody(UINT32BE Length) {
+    UINT8BE PadLength { PadLength < Length }; // Constraint: Padding cannot exceed payload [cite: 554]
+    // Data Length = Frame Length - PadLength - 1 (for PadLength byte)
+    UINT8BE Data[:byte-size Length - PadLength - 1];
+    UINT8BE Padding[:byte-size PadLength];
+} PaddedDataBody;
+
+typedef struct _RegularDataBody(UINT32BE Length) {
+    UINT8BE Data[:byte-size Length];
+} RegularDataBody;
+
+casetype _DataPayload(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: PaddedDataBody(Length) padded;
+        case 0: RegularDataBody(Length) regular;
+    }
+} DataPayload;
+
+typedef struct _DataFrame(UINT32BE Length) {
+    // Flags: PADDED(0x8), END_STREAM(0x1) [cite: 546, 548]
+    UINT8BE Reserved1: 4;
+    UINT8BE Padded: 1;
+    UINT8BE Reserved2: 2;
+    UINT8BE EndStream: 1;
+
+    StreamID streamID;
+    
+    DataPayload(Padded, Length) payload;
+} DataFrame;
+
+// 2. HEADERS Frame (Type 0x1) [cite: 556]
+typedef struct _HeadersFull(UINT32BE Length) where (Length >= 5) {
+    UINT8BE PadLength { PadLength < Length - 5 }; // Constraint checks
+    UINT32BE Exclusive: 1;
+    UINT32BE StreamDependency: 31;
+    UINT8BE Weight;
+    // Length - PadLength(1) - Dependency(4) - Weight(1) - Padding
+    UINT8BE HeaderBlockFragment[:byte-size Length - PadLength - 6];
+    UINT8BE Padding[:byte-size PadLength];
+} HeadersFull;
+
+typedef struct _HeadersPadded(UINT32BE Length) {
+    UINT8BE PadLength { PadLength < Length };
+    UINT8BE HeaderBlockFragment[:byte-size Length - PadLength - 1];
+    UINT8BE Padding[:byte-size PadLength];
+} HeadersPadded;
+
+typedef struct _HeadersPriority(UINT32BE Length) where (Length >= 5) {
+    UINT32BE Exclusive: 1;
+    UINT32BE StreamDependency: 31;
+    UINT8BE Weight;
+    UINT8BE HeaderBlockFragment[:byte-size Length - 5];
+} HeadersPriority;
+
+typedef struct _HeadersBasic(UINT32BE Length) {
+    UINT8BE HeaderBlockFragment[:byte-size Length];
+} HeadersBasic;
+
+// Nested switching for Priority(0x20) and Padded(0x8) flags [cite: 579, 580]
+casetype _HeadersPriPad(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: HeadersFull(Length) full;
+        case 0: HeadersPriority(Length) priorityOnly;
+    }
+} HeadersPriPad;
+
+casetype _HeadersNoPriPad(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: HeadersPadded(Length) paddedOnly;
+        case 0: HeadersBasic(Length) basic;
+    }
+} HeadersNoPriPad;
+
+casetype _HeadersPayload(UINT8BE Priority, UINT8BE Padded, UINT32BE Length) {
+    switch(Priority) {
+        case 1: HeadersPriPad(Padded, Length) withPriority;
+        case 0: HeadersNoPriPad(Padded, Length) noPriority;
+    }
+} HeadersPayload;
+
+typedef struct _HeadersFrame(UINT32BE Length) {
+    // Flags: PRIORITY(0x20), PADDED(0x8), END_HEADERS(0x4), END_STREAM(0x1)
+    UINT8BE Reserved1: 2;
+    UINT8BE Priority: 1;
+    UINT8BE Reserved2: 1;
+    UINT8BE Padded: 1;
+    UINT8BE EndHeaders: 1;
+    UINT8BE Reserved3: 1;
+    UINT8BE EndStream: 1;
+
+    StreamID streamID;
+    
+    HeadersPayload(Priority, Padded, Length) payload;
+} HeadersFrame;
+
+// 3. PRIORITY Frame (Type 0x2) [cite: 589]
+typedef struct _PriorityFrame(UINT32BE Length) {
+    // No Flags defined
+    UINT8BE Flags; 
+    
+    StreamID streamID;
+    
+    // Constraint: Length MUST be 5 [cite: 604]
+    UINT32BE Exclusive: 1 { Length == 5 };
+    UINT32BE StreamDependency: 31;
+    UINT8BE Weight;
+} PriorityFrame;
+
+// 4. RST_STREAM Frame (Type 0x3) [cite: 606]
+typedef struct _RstStreamFrame(UINT32BE Length) {
+    // No Flags defined
+    UINT8BE Flags;
+    
+    StreamID streamID;
+    
+    // Constraint: Length MUST be 4 [cite: 617]
+    UINT32BE ErrorCode { Length == 4 };
+} RstStreamFrame;
+
+// 5. SETTINGS Frame (Type 0x4) [cite: 618]
+typedef struct _SettingsAck {
+  unit Empty;
+} SettingsAck;
+
+typedef struct _SettingsParameter {
+    // Each setting is 6 bytes
+    UINT16BE Identifier {
+        Identifier == 1 ||
+        Identifier == 2 || 
+        Identifier == 3 || 
+        Identifier == 4 || 
+        Identifier == 5 || 
+        Identifier == 6    
+    };
+    UINT32BE Value;
+} SettingsParameter;
+
+typedef struct _SettingsList(UINT32BE Length) where (Length % 6 == 0) {
+    // Length must be multiple of 6 [cite: 638]
+    SettingsParameter settings[:byte-size Length];
+} SettingsList;
+
+casetype _SettingsPayload(UINT8BE Ack, UINT32BE Length) {
+    switch(Ack) {
+        case 1: SettingsAck ack { Length == 0 }; // If ACK, length must be 0 [cite: 632]
+        case 0: SettingsList(Length) list;
+    }
+} SettingsPayload;
+
+typedef struct _SettingsFrame(UINT32BE Length) {
+    // Flags: ACK(0x1) [cite: 630]
+    UINT8BE Reserved: 7;
+    UINT8BE Ack: 1;
+
+    // Constraint: Stream Identifier MUST be 0 [cite: 635]
+    StreamIDZero streamID;
+
+    SettingsPayload(Ack, Length) payload;
+} SettingsFrame;
+
+// 6. PUSH_PROMISE Frame (Type 0x5) [cite: 678]
+typedef struct _PushPromisePadded(UINT32BE Length) where (Length >= 4) {
+    UINT8BE PadLength { PadLength < Length - 4 };
+    UINT32BE Reserved: 1;
+    UINT32BE PromisedStreamID: 31;
+    UINT8BE HeaderBlockFragment[:byte-size Length - PadLength - 5];
+    UINT8BE Padding[:byte-size PadLength];
+} PushPromisePadded;
+
+typedef struct _PushPromiseBasic(UINT32BE Length) where (Length >= 4) {
+    UINT32BE Reserved: 1;
+    UINT32BE PromisedStreamID: 31;
+    UINT8BE HeaderBlockFragment[:byte-size Length - 4];
+} PushPromiseBasic;
+
+casetype _PushPromisePayload(UINT8BE Padded, UINT32BE Length) {
+    switch(Padded) {
+        case 1: PushPromisePadded(Length) padded;
+        case 0: PushPromiseBasic(Length) basic;
+    }
+} PushPromisePayload;
+
+typedef struct _PushPromiseFrame(UINT32BE Length) {
+    // Flags: PADDED(0x8), END_HEADERS(0x4) [cite: 688, 692]
+    UINT8BE Reserved1: 4;
+    UINT8BE Padded: 1;
+    UINT8BE EndHeaders: 1;
+    UINT8BE Reserved2: 2;
+
+    StreamID streamID;
+
+    PushPromisePayload(Padded, Length) payload;
+} PushPromiseFrame;
+
+// 7. PING Frame (Type 0x6) [cite: 711]
+typedef struct _PingFrame(UINT32BE Length) where (Length == 8) {
+    // Flags: ACK(0x1) [cite: 718]
+    UINT8BE Reserved: 7;
+    UINT8BE Ack: 1;
+
+    // Constraint: Stream ID MUST be 0 [cite: 721]
+    StreamIDZero streamID;
+
+    // Constraint: Length MUST be 8 [cite: 722]
+    UINT8BE OpaqueData[8];
+} PingFrame;
+
+// 8. GOAWAY Frame (Type 0x7) [cite: 723]
+typedef struct _GoAwayFrame(UINT32BE Length) where (Length >= 8) {
+    // No Flags defined [cite: 740]
+    UINT8BE Flags;
+
+    // Constraint: Stream ID MUST be 0 [cite: 742]
+    StreamIDZero streamID;
+
+    UINT32BE Reserved: 1;
+    UINT32BE LastStreamID: 31;
+    UINT32BE ErrorCode;
+    
+    // Debug data is remainder of length [cite: 739]
+    UINT8BE DebugData[:byte-size Length - 8];
+} GoAwayFrame;
+
+// 9. WINDOW_UPDATE Frame (Type 0x8) [cite: 773]
+typedef struct _WindowUpdateFrame(UINT32BE Length) {
+    // No Flags [cite: 785]
+    UINT8BE Flags;
+
+    StreamID streamID;
+
+    // Constraint: Length MUST be 4 [cite: 796]
+    UINT32BE Reserved: 1 { Length == 4 };
+    // Increment must be > 0 [cite: 784]
+    UINT32BE WindowSizeIncrement: 31 { WindowSizeIncrement > 0 };
+} WindowUpdateFrame;
+
+// 10. CONTINUATION Frame (Type 0x9) [cite: 833]
+typedef struct _ContinuationFrame(UINT32BE Length) {
+    // Flags: END_HEADERS(0x4) [cite: 836]
+    UINT8BE Reserved1: 5;
+    UINT8BE EndHeaders: 1;
+    UINT8BE Reserved2: 2;
+
+    StreamID streamID;
+
+    UINT8BE HeaderBlockFragment[:byte-size Length];
+} ContinuationFrame;
+
+// --- Entrypoint ---
+
+
+// Dispatcher based on Frame Type (Byte 3)
+casetype _FrameBody(UINT32BE Type, UINT32BE Length) {
+    switch(Type) {
+        case 0: DataFrame(Length) data;
+        case 1: HeadersFrame(Length) headers;
+        case 2: PriorityFrame(Length) priority;
+        case 3: RstStreamFrame(Length) rstStream;
+        case 4: SettingsFrame(Length) settings;
+        case 5: PushPromiseFrame(Length) pushPromise;
+        case 6: PingFrame(Length) ping;
+        case 7: GoAwayFrame(Length) goAway;
+        case 8: WindowUpdateFrame(Length) windowUpdate;
+        case 9: ContinuationFrame(Length) continuation;
+    }
+} FrameBody;
+
+entrypoint typedef struct _HTTP2Frame {
+    // Frame Header: Length (24) + Type (8) [cite: 210, 211]
+    UINT32BE Length: 24; 
+    UINT32BE Type: 8;    
+    
+    // Flags and StreamID are delegated to specific frames to support specific flag bit-fields
+    FrameBody(Type, Length) body;
+} HTTP2Frame;

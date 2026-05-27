@@ -1,0 +1,52 @@
+// IGMPv3 Membership Query and Report Messages
+// Merged from Snippet 1 and Snippet 2
+// Both Membership Query and Membership Report are top-level IGMPv3 messages.
+// We define a casetype for IGMPv3 message types (0x11 for Query, 0x22 for Report).
+// Each message type has its own struct, with constraints as per RFC 3376.
+
+// Group Record definition for Membership Report
+// Only used in Membership Report (Type 0x22)
+typedef struct _GroupRecord {
+  UINT8BE RecordType { RecordType >= 1 && RecordType <= 6 };
+  UINT8BE AuxDataLen { AuxDataLen == 0 }; // IGMPv3: must be zero
+  UINT16BE NumberOfSources { NumberOfSources <= 16383 }; // Ensure 4 * NumberOfSources <= 65535
+  UINT32BE MulticastAddress;
+  UINT32BE SourceAddress[:byte-size (4 * NumberOfSources)];
+  // No Auxiliary Data, so nothing follows
+} GroupRecord;
+
+// Membership Query Message (Type 0x11)
+typedef struct _MembershipQuery {
+  UINT8BE MaxRespCode;
+  UINT16BE Checksum;
+  UINT32BE GroupAddress;
+  UINT8BE Resv:4 { Resv == 0 };
+  UINT8BE S:1;
+  UINT8BE QRV:3;
+  UINT8BE QQIC;
+  UINT16BE NumberOfSources { NumberOfSources <= 16383 };
+  UINT32BE SourceAddress[:byte-size (4 * NumberOfSources)];
+} MembershipQuery;
+
+// Membership Report Message (Type 0x22)
+typedef struct _MembershipReport {
+  UINT8BE Reserved1 { Reserved1 == 0 };
+  UINT16BE Checksum;
+  UINT16BE Reserved2 { Reserved2 == 0 };
+  UINT16BE NumberOfGroupRecords { NumberOfGroupRecords <= 16383 };
+  GroupRecord GroupRecords[:byte-size (NumberOfGroupRecords * sizeof(GroupRecord))];
+} MembershipReport;
+
+// IGMPv3 Message casetype: Query (0x11) or Report (0x22)
+casetype _IGMPv3Message(UINT8BE Type) {
+  switch(Type) {
+    case 0x11: MembershipQuery query;
+    case 0x22: MembershipReport report;
+  }
+} IGMPv3Message;
+
+// Entrypoint: IGMPv3 message
+entrypoint typedef struct _IGMPv3 {
+  UINT8BE Type { Type == 0x11 || Type == 0x22 };
+  IGMPv3Message(Type) message;
+} IGMPv3;

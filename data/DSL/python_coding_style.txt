@@ -1,0 +1,12 @@
+When translating RFCs to Python implementation for packet parsers, Here is the coding style you should follow:
+
+#### One Function For One Packet Type
+- Define the function as `parse_packet_{packet_type_name}(current_result: dict, remaining_input: bytes) -> tuple[dict, bytes]`.
+- You should generate ***one and only one*** parsing function for one packet type.
+- !!!DO NOT inline any parsing logic! If the parser needs to parse another type of packet which are not included in the RFC, you **must not** inline any parse logic based on assumption! Instead, you should try to find the type of that packet (may in the packet containing it), and use a `parse_packet_{another_packet_type_name}` function to parse it.
+
+
+
+#### NO OOP
+- You must not define any classes.
+- Sharing of states should be done by passing arguments or return values.

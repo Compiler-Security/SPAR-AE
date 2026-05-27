@@ -1,0 +1,30 @@
+[project]
+name = "SPAR"
+version = "0.1.0"
+description = "A protocol specification generator based on LLM and discrepancy-based refinement"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ag2[all,anthropic,claude,gemini,openai]>=0.9.9",
+    "autogen>=0.9.9",
+    "coverage>=7.13.1",
+    "google-genai>=1.73.1",
+    "openai>=1.109.1",
+    "pdbp>=1.8.1",
+    "platformdirs>=4.4.0",
+    "pycomplete>=0.4.0",
+    "pydantic>=2.11.9",
+    "pytest>=9.0.2",
+    "pyyaml>=6.0.3",
+    "rich>=14.2.0",
+    "scapy>=2.6.1",
+    "sympy>=1.14.0",
+    "typed-argument-parser>=1.11.0",
+    "vertexai>=1.71.1",
+    "z3-solver>=4.15.3.0",
+]
+
+[tool.basedpyright]
+
+[tool.ruff]
+indent-width = 2

@@ -1,0 +1,2281 @@
+{
+    "protocol_name": "NTP",
+    "root": "7",
+    "sections": {
+        "7.5": {
+            "number": "7.5",
+            "title": "NTP Extension Field Format",
+            "content": "7.5.  NTP Extension Field Format\n   In NTPv4, one or more extension fields can be inserted after the\n   header and before the MAC, which is always present when an extension\n   field is present.  Other than defining the field format, this\n   document makes no use of the field contents.  An extension field\n   contains a request or response message in the format shown in\n   Figure 14.\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |          Field Type           |            Length             |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      .                                                               .\n      .                            Value                              .\n      .                                                               .\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Padding (as needed)                     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n                     Figure 14: Extension Field Format\n   All extension fields are zero-padded to a word (four octets)\n   boundary.  The Field Type field is specific to the defined function\n   and is not elaborated here.  While the minimum field length\n   containing required fields is four words (16 octets), a maximum field\n   length remains to be established.\n   The Length field is a 16-bit unsigned integer that indicates the\n   length of the entire extension field in octets, including the Padding\n   field.",
+            "summary": "This section describes the format of NTPv4 extension fields, which are inserted after the header and before the MAC, specifying their structure, padding, and the purpose of each field, while noting that the document does not define the contents or uses of these fields.",
+            "format_path": "data/3d_syntaxs/EXTENSIONFIELD_c4e776/EXTENSIONFIELD.3d",
+            "parser_path": "data/python_parser/PARSE_PACKET_NTP_EXTENSION_FIELD_7bf3bd/PARSE_PACKET_NTP_EXTENSION_FIELD.py"
+        },
+        "7.3": {
+            "number": "7.3",
+            "title": "Packet Header Variables",
+            "content": "7.3.  Packet Header Variables\n   The most important state variables from an external point of view are\n   the packet header variables described in Figure 7 and below.  The NTP\n   packet header consists of an integral number of 32-bit (4 octet)\n   words in network byte order.  The packet format consists of three\n   components: the header itself, one or more optional extension fields,\n   and an optional message authentication code (MAC).  The header\n   component is identical to the NTPv3 header and previous versions.\n   The optional extension fields are used by the Autokey public key\n   cryptographic algorithms described in [RFC5906].  The optional MAC is\n   used by both Autokey and the symmetric key cryptographic algorithm\n   described in this RFC.\n               +-----------+------------+-----------------------+\n               | Name      | Formula    | Description           |\n               +-----------+------------+-----------------------+\n               | leap      | leap       | leap indicator (LI)   |\n               | version   | version    | version number (VN)   |\n               | mode      | mode       | mode                  |\n               | stratum   | stratum    | stratum               |\n               | poll      | poll       | poll exponent         |\n               | precision | rho        | precision exponent    |\n               | rootdelay | delta_r    | root delay            |\n               | rootdisp  | epsilon_r  | root dispersion       |\n               | refid     | refid      | reference ID          |\n               | reftime   | reftime    | reference timestamp   |\n               | org       | T1         | origin timestamp      |\n               | rec       | T2         | receive timestamp     |\n               | xmt       | T3         | transmit timestamp    |\n               | dst       | T4         | destination timestamp |\n               | keyid     | keyid      | key ID                |\n               | dgst      | dgst       | message digest        |\n               +-----------+------------+-----------------------+\n                     Figure 7: Packet Header Variables\n   The NTP packet is a UDP datagram [RFC0768].  Some fields use multiple\n   words and others are packed in smaller fields within a word.  The NTP\n   packet header shown in Figure 8 has 12 words followed by optional\n   extension fields and finally an optional message authentication code\n   (MAC) consisting of the Key Identifier field and Message Digest\n   field.\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |LI | VN  |Mode |    Stratum     |     Poll      |  Precision   |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                         Root Delay                            |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                         Root Dispersion                       |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                          Reference ID                         |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                     Reference Timestamp (64)                  +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                      Origin Timestamp (64)                    +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                      Receive Timestamp (64)                   +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                      Transmit Timestamp (64)                  +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                    Extension Field 1 (variable)               .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                    Extension Field 2 (variable)               .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                          Key Identifier                       |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      |                            dgst (128)                         |\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n                      Figure 8: Packet Header Format\n   The extension fields are used to add optional capabilities, for\n   example, the Autokey security protocol [RFC5906].  The extension\n   field format is presented in order for the packet to be parsed\n   without the knowledge of the extension field functions.  The MAC is\n   used by both Autokey and the symmetric key authentication scheme.\n   A list of the packet header variables is shown in Figure 7 and\n   described in detail below.  Except for a minor variation when using\n   the IPv6 address family, these fields are backwards compatible with\n   NTPv3.  The packet header fields apply to both transmitted packets (x\n   prefix) and received packets (r prefix).  In Figure 8, the size of\n   some multiple-word fields is shown in bits if not the default 32\n   bits.  The basic header extends from the beginning of the packet to\n   the end of the Transmit Timestamp field.\n   The fields and associated packet variables (in parentheses) are\n   interpreted as follows:\n   LI Leap Indicator (leap): 2-bit integer warning of an impending leap\n   second to be inserted or deleted in the last minute of the current\n   month with values defined in Figure 9.\n           +-------+----------------------------------------+\n           | Value | Meaning                                |\n           +-------+----------------------------------------+\n           | 0     | no warning                             |\n           | 1     | last minute of the day has 61 seconds  |\n           | 2     | last minute of the day has 59 seconds  |\n           | 3     | unknown (clock unsynchronized)         |\n           +-------+----------------------------------------+\n                         Figure 9: Leap Indicator\n   VN Version Number (version): 3-bit integer representing the NTP\n   version number, currently 4.\n   Mode (mode): 3-bit integer representing the mode, with values defined\n   in Figure 10.\n                      +-------+--------------------------+\n                      | Value | Meaning                  |\n                      +-------+--------------------------+\n                      | 0     | reserved                 |\n                      | 1     | symmetric active         |\n                      | 2     | symmetric passive        |\n                      | 3     | client                   |\n                      | 4     | server                   |\n                      | 5     | broadcast                |\n                      | 6     | NTP control message      |\n                      | 7     | reserved for private use |\n                      +-------+--------------------------+\n                       Figure 10: Association Modes\n   Stratum (stratum): 8-bit integer representing the stratum, with\n   values defined in Figure 11.\n        +--------+-----------------------------------------------------+\n        | Value  | Meaning                                             |\n        +--------+-----------------------------------------------------+\n        | 0      | unspecified or invalid                              |\n        | 1      | primary server (e.g., equipped with a GPS receiver) |\n        | 2-15   | secondary server (via NTP)                          |\n        | 16     | unsynchronized                                      |\n        | 17-255 | reserved                                            |\n        +--------+-----------------------------------------------------+\n                         Figure 11: Packet Stratum\n   It is customary to map the stratum value 0 in received packets to\n   MAXSTRAT (16) in the peer variable p.stratum and to map p.stratum\n   values of MAXSTRAT or greater to 0 in transmitted packets.  This\n   allows reference clocks, which normally appear at stratum 0, to be\n   conveniently mitigated using the same clock selection algorithms used\n   for external sources (see Appendix A.5.5.1 for an example).\n   Poll: 8-bit signed integer representing the maximum interval between\n   successive messages, in log2 seconds.  Suggested default limits for\n   minimum and maximum poll intervals are 6 and 10, respectively.\n   Precision: 8-bit signed integer representing the precision of the\n   system clock, in log2 seconds.  For instance, a value of -18\n   corresponds to a precision of about one microsecond.  The precision\n   can be determined when the service first starts up as the minimum\n   time of several iterations to read the system clock.\n   Root Delay (rootdelay): Total round-trip delay to the reference\n   clock, in NTP short format.\n   Root Dispersion (rootdisp): Total dispersion to the reference clock,\n   in NTP short format.\n   Reference ID (refid): 32-bit code identifying the particular server\n   or reference clock.  The interpretation depends on the value in the\n   stratum field.  For packet stratum 0 (unspecified or invalid), this\n   is a four-character ASCII [RFC1345] string, called the \"kiss code\",\n   used for debugging and monitoring purposes.  For stratum 1 (reference\n   clock), this is a four-octet, left-justified, zero-padded ASCII\n   string assigned to the reference clock.  The authoritative list of\n   Reference Identifiers is maintained by IANA; however, any string\n   beginning with the ASCII character \"X\" is reserved for unregistered\n   experimentation and development.  The identifiers in Figure 12 have\n   been used as ASCII identifiers:\n     +------+----------------------------------------------------------+\n     | ID   | Clock Source                                             |\n     +------+----------------------------------------------------------+\n     | GOES | Geosynchronous Orbit Environment Satellite               |\n     | GPS  | Global Position System                                   |\n     | GAL  | Galileo Positioning System                               |\n     | PPS  | Generic pulse-per-second                                 |\n     | IRIG | Inter-Range Instrumentation Group                        |\n     | WWVB | LF Radio WWVB Ft. Collins, CO 60 kHz                     |\n     | DCF  | LF Radio DCF77 Mainflingen, DE 77.5 kHz                  |\n     | HBG  | LF Radio HBG Prangins, HB 75 kHz                         |\n     | MSF  | LF Radio MSF Anthorn, UK 60 kHz                          |\n     | JJY  | LF Radio JJY Fukushima, JP 40 kHz, Saga, JP 60 kHz       |\n     | LORC | MF Radio LORAN C station, 100 kHz                        |\n     | TDF  | MF Radio Allouis, FR 162 kHz                             |\n     | CHU  | HF Radio CHU Ottawa, Ontario                             |\n     | WWV  | HF Radio WWV Ft. Collins, CO                             |\n     | WWVH | HF Radio WWVH Kauai, HI                                  |\n     | NIST | NIST telephone modem                                     |\n     | ACTS | NIST telephone modem                                     |\n     | USNO | USNO telephone modem                                     |\n     | PTB  | European telephone modem                                 |\n     +------+----------------------------------------------------------+\n                     Figure 12: Reference Identifiers\n   Above stratum 1 (secondary servers and clients): this is the\n   reference identifier of the server and can be used to detect timing\n   loops.  If using the IPv4 address family, the identifier is the four-\n   octet IPv4 address.  If using the IPv6 address family, it is the\n   first four octets of the MD5 hash of the IPv6 address.  Note that,\n   when using the IPv6 address family on an NTPv4 server with a NTPv3\n   client, the Reference Identifier field appears to be a random value\n   and a timing loop might not be detected.\n   Reference Timestamp: Time when the system clock was last set or\n   corrected, in NTP timestamp format.\n   Origin Timestamp (org): Time at the client when the request departed\n   for the server, in NTP timestamp format.\n   Receive Timestamp (rec): Time at the server when the request arrived\n   from the client, in NTP timestamp format.\n   Transmit Timestamp (xmt): Time at the server when the response left\n   for the client, in NTP timestamp format.\n   Destination Timestamp (dst): Time at the client when the reply\n   arrived from the server, in NTP timestamp format.\n   Note: The Destination Timestamp field is not included as a header\n   field; it is determined upon arrival of the packet and made available\n   in the packet buffer data structure.\n   If the NTP has access to the physical layer, then the timestamps are\n   associated with the beginning of the symbol after the start of frame.\n   Otherwise, implementations should attempt to associate the timestamp\n   to the earliest accessible point in the frame.\n   The MAC consists of the Key Identifier followed by the Message\n   Digest.  The message digest, or cryptosum, is calculated as in\n   [RFC1321] over all NTP-header and optional extension fields, but not\n   the MAC itself.\n   Extension Field n: See Section 7.5 for a description of the format of\n   this field.\n   Key Identifier (keyid): 32-bit unsigned integer used by the client\n   and server to designate a secret 128-bit MD5 key.\n   Message Digest (digest): 128-bit MD5 hash computed over the key\n   followed by the NTP packet header and extensions fields (but not the\n   Key Identifier or Message Digest fields).\n   It should be noted that the MAC computation used here differs from\n   those defined in [RFC1305] and [RFC4330] but is consistent with how\n   existing implementations generate a MAC.\n7.5.  NTP Extension Field Format\n   In NTPv4, one or more extension fields can be inserted after the\n   header and before the MAC, which is always present when an extension\n   field is present.  Other than defining the field format, this\n   document makes no use of the field contents.  An extension field\n   contains a request or response message in the format shown in\n   Figure 14.\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |          Field Type           |            Length             |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      .                                                               .\n      .                            Value                              .\n      .                                                               .\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Padding (as needed)                     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n                     Figure 14: Extension Field Format\n   All extension fields are zero-padded to a word (four octets)\n   boundary.  The Field Type field is specific to the defined function\n   and is not elaborated here.  While the minimum field length\n   containing required fields is four words (16 octets), a maximum field\n   length remains to be established.\n   The Length field is a 16-bit unsigned integer that indicates the\n   length of the entire extension field in octets, including the Padding\n   field.",
+            "summary": "This section describes the structure and key variables of the NTP packet header, detailing its fields, their purposes, and compatibility considerations, including optional extension fields and message authentication code (MAC) usage for security. It explains how each field is interpreted and highlights differences in field usage based on protocol version and address family. This section describes the format of NTPv4 extension fields, which are inserted after the header and before the MAC, specifying their structure, padding, and the purpose of each field, while noting that the document does not define the contents or uses of these fields.",
+            "format_path": "/home/hengdiye/some/rllm/data/3d_syntaxs/NTP_52201a/NTP.3d",
+            "parser_path": "data/python_parser/MERGED_NTP_PARSER_5e3fb7/MERGED_NTP_PARSER.py"
+        },
+        "7.4": {
+            "number": "7.4",
+            "title": "The Kiss-o'-Death Packet",
+            "content": "7.4.  The Kiss-o'-Death Packet\n   If the Stratum field is 0, which implies unspecified or invalid, the\n   Reference Identifier field can be used to convey messages useful for\n   status reporting and access control.  These are called Kiss-o'-Death\n   (KoD) packets and the ASCII messages they convey are called kiss\n   codes.  The KoD packets got their name because an early use was to\n   tell clients to stop sending packets that violate server access\n   controls.  The kiss codes can provide useful information for an\n   intelligent client, either NTPv4 or SNTPv4.  Kiss codes are encoded\n   in four-character ASCII strings that are left justified and zero\n   filled.  The strings are designed for character displays and log\n   files.  A list of the currently defined kiss codes is given in\n   Figure 13.  Recipients of kiss codes MUST inspect them and, in the\n   following cases, take these actions:\n   a.  For kiss codes DENY and RSTR, the client MUST demobilize any\n       associations to that server and stop sending packets to that\n       server;\n   b.  For kiss code RATE, the client MUST immediately reduce its\n       polling interval to that server and continue to reduce it each\n       time it receives a RATE kiss code.\n   c.  Kiss codes beginning with the ASCII character \"X\" are for\n       unregistered experimentation and development and MUST be ignored\n       if not recognized.\n   d.  Other than the above conditions, KoD packets have no protocol\n       significance and are discarded after inspection.\n   +------+------------------------------------------------------------+\n   | Code |                           Meaning                          |\n   +------+------------------------------------------------------------+\n   | ACST | The association belongs to a unicast server.               |\n   | AUTH | Server authentication failed.                              |\n   | AUTO | Autokey sequence failed.                                   |\n   | BCST | The association belongs to a broadcast server.             |\n   | CRYP | Cryptographic authentication or identification failed.     |\n   | DENY | Access denied by remote server.                            |\n   | DROP | Lost peer in symmetric mode.                               |\n   | RSTR | Access denied due to local policy.                         |\n   | INIT | The association has not yet synchronized for the first     |\n   |      | time.                                                      |\n   | MCST | The association belongs to a dynamically discovered server.|\n   | NKEY | No key found. Either the key was never installed or is     |\n   |      | not trusted.                                               |\n   | RATE | Rate exceeded. The server has temporarily denied access    |\n   |      | because the client exceeded the rate threshold.            |\n   | RMOT | Alteration of association from a remote host running       |\n   |      | ntpdc.                                                     |\n   | STEP | A step change in system time has occurred, but the         |\n   |      | association has not yet resynchronized.                    |\n   +------+------------------------------------------------------------+\n                           Figure 13: Kiss Codes\n   The Receive Timestamp and the Transmit Timestamp (set by the server)\n   are undefined when in a KoD packet and MUST NOT be relied upon to\n   have valid values and MUST be discarded.",
+            "summary": "This section explains Kiss-o'-Death (KoD) packets, which use the Stratum 0 and Reference Identifier fields to convey ASCII messages (kiss codes) for status reporting and access control, and specifies required client actions for certain codes while noting that other KoD packets have no protocol significance.",
+            "format_path": "data/3d_syntaxs/KISSCODE_ac2c02/KISSCODE.3d",
+            "parser_path": "data/python_parser/PARSE_PACKET_KISS_O_DEATH_PACKET_7a3a98/PARSE_PACKET_KISS_O_DEATH_PACKET.py"
+        },
+        "7": {
+            "number": "7",
+            "title": "Data Structures",
+            "content": "7.  Data Structures\n   The NTP state machines are defined in the following sections.  State\n   variables are separated into classes according to their function in\n   packet headers, peer and poll processes, the system process, and the\n   clock discipline process.  Packet variables represent the NTP header\n   values in transmitted and received packets.  Peer and poll variables\n   represent the contents of the association for each server separately.\n   System variables represent the state of the server as seen by its\n   dependent clients.  Clock discipline variables represent the internal\n   workings of the clock discipline algorithm.  An example is described\n   in Appendix A.\n7.3.  Packet Header Variables\n   The most important state variables from an external point of view are\n   the packet header variables described in Figure 7 and below.  The NTP\n   packet header consists of an integral number of 32-bit (4 octet)\n   words in network byte order.  The packet format consists of three\n   components: the header itself, one or more optional extension fields,\n   and an optional message authentication code (MAC).  The header\n   component is identical to the NTPv3 header and previous versions.\n   The optional extension fields are used by the Autokey public key\n   cryptographic algorithms described in [RFC5906].  The optional MAC is\n   used by both Autokey and the symmetric key cryptographic algorithm\n   described in this RFC.\n               +-----------+------------+-----------------------+\n               | Name      | Formula    | Description           |\n               +-----------+------------+-----------------------+\n               | leap      | leap       | leap indicator (LI)   |\n               | version   | version    | version number (VN)   |\n               | mode      | mode       | mode                  |\n               | stratum   | stratum    | stratum               |\n               | poll      | poll       | poll exponent         |\n               | precision | rho        | precision exponent    |\n               | rootdelay | delta_r    | root delay            |\n               | rootdisp  | epsilon_r  | root dispersion       |\n               | refid     | refid      | reference ID          |\n               | reftime   | reftime    | reference timestamp   |\n               | org       | T1         | origin timestamp      |\n               | rec       | T2         | receive timestamp     |\n               | xmt       | T3         | transmit timestamp    |\n               | dst       | T4         | destination timestamp |\n               | keyid     | keyid      | key ID                |\n               | dgst      | dgst       | message digest        |\n               +-----------+------------+-----------------------+\n                     Figure 7: Packet Header Variables\n   The NTP packet is a UDP datagram [RFC0768].  Some fields use multiple\n   words and others are packed in smaller fields within a word.  The NTP\n   packet header shown in Figure 8 has 12 words followed by optional\n   extension fields and finally an optional message authentication code\n   (MAC) consisting of the Key Identifier field and Message Digest\n   field.\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |LI | VN  |Mode |    Stratum     |     Poll      |  Precision   |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                         Root Delay                            |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                         Root Dispersion                       |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                          Reference ID                         |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                     Reference Timestamp (64)                  +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                      Origin Timestamp (64)                    +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                      Receive Timestamp (64)                   +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                      Transmit Timestamp (64)                  +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                    Extension Field 1 (variable)               .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                    Extension Field 2 (variable)               .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                          Key Identifier                       |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      |                            dgst (128)                         |\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n                      Figure 8: Packet Header Format\n   The extension fields are used to add optional capabilities, for\n   example, the Autokey security protocol [RFC5906].  The extension\n   field format is presented in order for the packet to be parsed\n   without the knowledge of the extension field functions.  The MAC is\n   used by both Autokey and the symmetric key authentication scheme.\n   A list of the packet header variables is shown in Figure 7 and\n   described in detail below.  Except for a minor variation when using\n   the IPv6 address family, these fields are backwards compatible with\n   NTPv3.  The packet header fields apply to both transmitted packets (x\n   prefix) and received packets (r prefix).  In Figure 8, the size of\n   some multiple-word fields is shown in bits if not the default 32\n   bits.  The basic header extends from the beginning of the packet to\n   the end of the Transmit Timestamp field.\n   The fields and associated packet variables (in parentheses) are\n   interpreted as follows:\n   LI Leap Indicator (leap): 2-bit integer warning of an impending leap\n   second to be inserted or deleted in the last minute of the current\n   month with values defined in Figure 9.\n           +-------+----------------------------------------+\n           | Value | Meaning                                |\n           +-------+----------------------------------------+\n           | 0     | no warning                             |\n           | 1     | last minute of the day has 61 seconds  |\n           | 2     | last minute of the day has 59 seconds  |\n           | 3     | unknown (clock unsynchronized)         |\n           +-------+----------------------------------------+\n                         Figure 9: Leap Indicator\n   VN Version Number (version): 3-bit integer representing the NTP\n   version number, currently 4.\n   Mode (mode): 3-bit integer representing the mode, with values defined\n   in Figure 10.\n                      +-------+--------------------------+\n                      | Value | Meaning                  |\n                      +-------+--------------------------+\n                      | 0     | reserved                 |\n                      | 1     | symmetric active         |\n                      | 2     | symmetric passive        |\n                      | 3     | client                   |\n                      | 4     | server                   |\n                      | 5     | broadcast                |\n                      | 6     | NTP control message      |\n                      | 7     | reserved for private use |\n                      +-------+--------------------------+\n                       Figure 10: Association Modes\n   Stratum (stratum): 8-bit integer representing the stratum, with\n   values defined in Figure 11.\n        +--------+-----------------------------------------------------+\n        | Value  | Meaning                                             |\n        +--------+-----------------------------------------------------+\n        | 0      | unspecified or invalid                              |\n        | 1      | primary server (e.g., equipped with a GPS receiver) |\n        | 2-15   | secondary server (via NTP)                          |\n        | 16     | unsynchronized                                      |\n        | 17-255 | reserved                                            |\n        +--------+-----------------------------------------------------+\n                         Figure 11: Packet Stratum\n   It is customary to map the stratum value 0 in received packets to\n   MAXSTRAT (16) in the peer variable p.stratum and to map p.stratum\n   values of MAXSTRAT or greater to 0 in transmitted packets.  This\n   allows reference clocks, which normally appear at stratum 0, to be\n   conveniently mitigated using the same clock selection algorithms used\n   for external sources (see Appendix A.5.5.1 for an example).\n   Poll: 8-bit signed integer representing the maximum interval between\n   successive messages, in log2 seconds.  Suggested default limits for\n   minimum and maximum poll intervals are 6 and 10, respectively.\n   Precision: 8-bit signed integer representing the precision of the\n   system clock, in log2 seconds.  For instance, a value of -18\n   corresponds to a precision of about one microsecond.  The precision\n   can be determined when the service first starts up as the minimum\n   time of several iterations to read the system clock.\n   Root Delay (rootdelay): Total round-trip delay to the reference\n   clock, in NTP short format.\n   Root Dispersion (rootdisp): Total dispersion to the reference clock,\n   in NTP short format.\n   Reference ID (refid): 32-bit code identifying the particular server\n   or reference clock.  The interpretation depends on the value in the\n   stratum field.  For packet stratum 0 (unspecified or invalid), this\n   is a four-character ASCII [RFC1345] string, called the \"kiss code\",\n   used for debugging and monitoring purposes.  For stratum 1 (reference\n   clock), this is a four-octet, left-justified, zero-padded ASCII\n   string assigned to the reference clock.  The authoritative list of\n   Reference Identifiers is maintained by IANA; however, any string\n   beginning with the ASCII character \"X\" is reserved for unregistered\n   experimentation and development.  The identifiers in Figure 12 have\n   been used as ASCII identifiers:\n     +------+----------------------------------------------------------+\n     | ID   | Clock Source                                             |\n     +------+----------------------------------------------------------+\n     | GOES | Geosynchronous Orbit Environment Satellite               |\n     | GPS  | Global Position System                                   |\n     | GAL  | Galileo Positioning System                               |\n     | PPS  | Generic pulse-per-second                                 |\n     | IRIG | Inter-Range Instrumentation Group                        |\n     | WWVB | LF Radio WWVB Ft. Collins, CO 60 kHz                     |\n     | DCF  | LF Radio DCF77 Mainflingen, DE 77.5 kHz                  |\n     | HBG  | LF Radio HBG Prangins, HB 75 kHz                         |\n     | MSF  | LF Radio MSF Anthorn, UK 60 kHz                          |\n     | JJY  | LF Radio JJY Fukushima, JP 40 kHz, Saga, JP 60 kHz       |\n     | LORC | MF Radio LORAN C station, 100 kHz                        |\n     | TDF  | MF Radio Allouis, FR 162 kHz                             |\n     | CHU  | HF Radio CHU Ottawa, Ontario                             |\n     | WWV  | HF Radio WWV Ft. Collins, CO                             |\n     | WWVH | HF Radio WWVH Kauai, HI                                  |\n     | NIST | NIST telephone modem                                     |\n     | ACTS | NIST telephone modem                                     |\n     | USNO | USNO telephone modem                                     |\n     | PTB  | European telephone modem                                 |\n     +------+----------------------------------------------------------+\n                     Figure 12: Reference Identifiers\n   Above stratum 1 (secondary servers and clients): this is the\n   reference identifier of the server and can be used to detect timing\n   loops.  If using the IPv4 address family, the identifier is the four-\n   octet IPv4 address.  If using the IPv6 address family, it is the\n   first four octets of the MD5 hash of the IPv6 address.  Note that,\n   when using the IPv6 address family on an NTPv4 server with a NTPv3\n   client, the Reference Identifier field appears to be a random value\n   and a timing loop might not be detected.\n   Reference Timestamp: Time when the system clock was last set or\n   corrected, in NTP timestamp format.\n   Origin Timestamp (org): Time at the client when the request departed\n   for the server, in NTP timestamp format.\n   Receive Timestamp (rec): Time at the server when the request arrived\n   from the client, in NTP timestamp format.\n   Transmit Timestamp (xmt): Time at the server when the response left\n   for the client, in NTP timestamp format.\n   Destination Timestamp (dst): Time at the client when the reply\n   arrived from the server, in NTP timestamp format.\n   Note: The Destination Timestamp field is not included as a header\n   field; it is determined upon arrival of the packet and made available\n   in the packet buffer data structure.\n   If the NTP has access to the physical layer, then the timestamps are\n   associated with the beginning of the symbol after the start of frame.\n   Otherwise, implementations should attempt to associate the timestamp\n   to the earliest accessible point in the frame.\n   The MAC consists of the Key Identifier followed by the Message\n   Digest.  The message digest, or cryptosum, is calculated as in\n   [RFC1321] over all NTP-header and optional extension fields, but not\n   the MAC itself.\n   Extension Field n: See Section 7.5 for a description of the format of\n   this field.\n   Key Identifier (keyid): 32-bit unsigned integer used by the client\n   and server to designate a secret 128-bit MD5 key.\n   Message Digest (digest): 128-bit MD5 hash computed over the key\n   followed by the NTP packet header and extensions fields (but not the\n   Key Identifier or Message Digest fields).\n   It should be noted that the MAC computation used here differs from\n   those defined in [RFC1305] and [RFC4330] but is consistent with how\n   existing implementations generate a MAC.\n7.5.  NTP Extension Field Format\n   In NTPv4, one or more extension fields can be inserted after the\n   header and before the MAC, which is always present when an extension\n   field is present.  Other than defining the field format, this\n   document makes no use of the field contents.  An extension field\n   contains a request or response message in the format shown in\n   Figure 14.\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |          Field Type           |            Length             |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      .                                                               .\n      .                            Value                              .\n      .                                                               .\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Padding (as needed)                     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n                     Figure 14: Extension Field Format\n   All extension fields are zero-padded to a word (four octets)\n   boundary.  The Field Type field is specific to the defined function\n   and is not elaborated here.  While the minimum field length\n   containing required fields is four words (16 octets), a maximum field\n   length remains to be established.\n   The Length field is a 16-bit unsigned integer that indicates the\n   length of the entire extension field in octets, including the Padding\n   field.\n7.4.  The Kiss-o'-Death Packet\n   If the Stratum field is 0, which implies unspecified or invalid, the\n   Reference Identifier field can be used to convey messages useful for\n   status reporting and access control.  These are called Kiss-o'-Death\n   (KoD) packets and the ASCII messages they convey are called kiss\n   codes.  The KoD packets got their name because an early use was to\n   tell clients to stop sending packets that violate server access\n   controls.  The kiss codes can provide useful information for an\n   intelligent client, either NTPv4 or SNTPv4.  Kiss codes are encoded\n   in four-character ASCII strings that are left justified and zero\n   filled.  The strings are designed for character displays and log\n   files.  A list of the currently defined kiss codes is given in\n   Figure 13.  Recipients of kiss codes MUST inspect them and, in the\n   following cases, take these actions:\n   a.  For kiss codes DENY and RSTR, the client MUST demobilize any\n       associations to that server and stop sending packets to that\n       server;\n   b.  For kiss code RATE, the client MUST immediately reduce its\n       polling interval to that server and continue to reduce it each\n       time it receives a RATE kiss code.\n   c.  Kiss codes beginning with the ASCII character \"X\" are for\n       unregistered experimentation and development and MUST be ignored\n       if not recognized.\n   d.  Other than the above conditions, KoD packets have no protocol\n       significance and are discarded after inspection.\n   +------+------------------------------------------------------------+\n   | Code |                           Meaning                          |\n   +------+------------------------------------------------------------+\n   | ACST | The association belongs to a unicast server.               |\n   | AUTH | Server authentication failed.                              |\n   | AUTO | Autokey sequence failed.                                   |\n   | BCST | The association belongs to a broadcast server.             |\n   | CRYP | Cryptographic authentication or identification failed.     |\n   | DENY | Access denied by remote server.                            |\n   | DROP | Lost peer in symmetric mode.                               |\n   | RSTR | Access denied due to local policy.                         |\n   | INIT | The association has not yet synchronized for the first     |\n   |      | time.                                                      |\n   | MCST | The association belongs to a dynamically discovered server.|\n   | NKEY | No key found. Either the key was never installed or is     |\n   |      | not trusted.                                               |\n   | RATE | Rate exceeded. The server has temporarily denied access    |\n   |      | because the client exceeded the rate threshold.            |\n   | RMOT | Alteration of association from a remote host running       |\n   |      | ntpdc.                                                     |\n   | STEP | A step change in system time has occurred, but the         |\n   |      | association has not yet resynchronized.                    |\n   +------+------------------------------------------------------------+\n                           Figure 13: Kiss Codes\n   The Receive Timestamp and the Transmit Timestamp (set by the server)\n   are undefined when in a KoD packet and MUST NOT be relied upon to\n   have valid values and MUST be discarded.",
+            "summary": "This section introduces the classification of NTP state variables based on their roles in packet headers, peer and poll processes, system processes, and clock discipline, setting the stage for detailed definitions in subsequent sections. This section describes the structure and key variables of the NTP packet header, detailing its fields, their purposes, and compatibility considerations, including optional extension fields and message authentication code (MAC) usage for security. It explains how each field is interpreted and highlights differences in field usage based on protocol version and address family. This section describes the format of NTPv4 extension fields, which are inserted after the header and before the MAC, specifying their structure, padding, and the purpose of each field, while noting that the document does not define the contents or uses of these fields. This section explains Kiss-o'-Death (KoD) packets, which use the Stratum 0 and Reference Identifier fields to convey ASCII messages (kiss codes) for status reporting and access control, and specifies required client actions for certain codes while noting that other KoD packets have no protocol significance.",
+            "format_path": "data/3d_syntaxs/NTPMESSAGE_d2265e/NTPMESSAGE.3d",
+            "parser_path": "data/python_parser/FIXED_NTP_PARSER_b02ea4/FIXED_NTP_PARSER.py"
+        }
+    },
+    "parent_of": {
+        "7.3": "7",
+        "7.4": "7",
+        "7.5": "7.3"
+    },
+    "children_of": {
+        "7": [
+            "7.3",
+            "7.4"
+        ],
+        "7.3": [
+            "7.5"
+        ]
+    },
+    "name_to_section_3d": {
+        "Zero": {
+            "7.3": [
+                [
+                    1,
+                    16
+                ],
+                [
+                    1,
+                    16
+                ],
+                [
+                    2,
+                    3
+                ],
+                [
+                    4,
+                    16
+                ],
+                [
+                    4,
+                    16
+                ],
+                [
+                    5,
+                    3
+                ]
+            ],
+            "7.5": [
+                [
+                    1,
+                    16
+                ],
+                [
+                    1,
+                    16
+                ],
+                [
+                    2,
+                    3
+                ]
+            ],
+            "7": [
+                [
+                    4,
+                    16
+                ],
+                [
+                    4,
+                    16
+                ],
+                [
+                    5,
+                    3
+                ]
+            ]
+        },
+        "ExtensionField": {
+            "7.3": [
+                [
+                    5,
+                    16
+                ],
+                [
+                    5,
+                    16
+                ],
+                [
+                    12,
+                    3
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    112,
+                    7
+                ],
+                [
+                    116,
+                    7
+                ],
+                [
+                    120,
+                    7
+                ]
+            ],
+            "7.5": [
+                [
+                    5,
+                    16
+                ],
+                [
+                    5,
+                    16
+                ],
+                [
+                    12,
+                    3
+                ]
+            ],
+            "7": [
+                [
+                    8,
+                    16
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    112,
+                    7
+                ],
+                [
+                    116,
+                    7
+                ],
+                [
+                    120,
+                    7
+                ]
+            ]
+        },
+        "FieldType": {
+            "7.3": [
+                [
+                    6,
+                    3
+                ],
+                [
+                    9,
+                    3
+                ]
+            ],
+            "7.5": [
+                [
+                    6,
+                    3
+                ]
+            ],
+            "7": [
+                [
+                    9,
+                    3
+                ]
+            ]
+        },
+        "Length": {
+            "7.3": [
+                [
+                    7,
+                    3
+                ],
+                [
+                    10,
+                    3
+                ]
+            ],
+            "7.5": [
+                [
+                    7,
+                    3
+                ]
+            ],
+            "7": [
+                [
+                    10,
+                    3
+                ]
+            ]
+        },
+        "Value": {
+            "7.3": [
+                [
+                    8,
+                    3
+                ],
+                [
+                    11,
+                    3
+                ]
+            ],
+            "7.5": [
+                [
+                    8,
+                    3
+                ]
+            ],
+            "7": [
+                [
+                    11,
+                    3
+                ]
+            ]
+        },
+        "ExtensionFieldEntry": {
+            "7.3": [
+                [
+                    11,
+                    27
+                ],
+                [
+                    11,
+                    27
+                ]
+            ],
+            "7.5": [
+                [
+                    11,
+                    27
+                ],
+                [
+                    11,
+                    27
+                ]
+            ]
+        },
+        "ext": {
+            "7.3": [
+                [
+                    12,
+                    3
+                ]
+            ],
+            "7.5": [
+                [
+                    12,
+                    3
+                ]
+            ]
+        },
+        "MACField": {
+            "7": [
+                [
+                    14,
+                    16
+                ],
+                [
+                    14,
+                    16
+                ],
+                [
+                    106,
+                    7
+                ],
+                [
+                    113,
+                    7
+                ],
+                [
+                    117,
+                    7
+                ],
+                [
+                    121,
+                    7
+                ]
+            ],
+            "7.3": [
+                [
+                    14,
+                    16
+                ],
+                [
+                    14,
+                    16
+                ],
+                [
+                    106,
+                    7
+                ],
+                [
+                    113,
+                    7
+                ],
+                [
+                    117,
+                    7
+                ],
+                [
+                    121,
+                    7
+                ]
+            ]
+        },
+        "KeyIdentifier": {
+            "7": [
+                [
+                    15,
+                    3
+                ]
+            ],
+            "7.3": [
+                [
+                    15,
+                    3
+                ]
+            ]
+        },
+        "Digest": {
+            "7": [
+                [
+                    16,
+                    3
+                ]
+            ],
+            "7.3": [
+                [
+                    16,
+                    3
+                ]
+            ]
+        },
+        "KissCode": {
+            "7": [
+                [
+                    19,
+                    16
+                ],
+                [
+                    19,
+                    16
+                ],
+                [
+                    34,
+                    13
+                ],
+                [
+                    1,
+                    16
+                ],
+                [
+                    1,
+                    16
+                ],
+                [
+                    2,
+                    5
+                ],
+                [
+                    21,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    19,
+                    16
+                ],
+                [
+                    19,
+                    16
+                ],
+                [
+                    34,
+                    13
+                ]
+            ],
+            "7.4": [
+                [
+                    1,
+                    16
+                ],
+                [
+                    1,
+                    16
+                ],
+                [
+                    2,
+                    5
+                ],
+                [
+                    21,
+                    5
+                ]
+            ]
+        },
+        "chars": {
+            "7": [
+                [
+                    20,
+                    3
+                ]
+            ],
+            "7.3": [
+                [
+                    20,
+                    3
+                ]
+            ]
+        },
+        "AsciiRefId": {
+            "7": [
+                [
+                    23,
+                    16
+                ],
+                [
+                    23,
+                    16
+                ],
+                [
+                    35,
+                    13
+                ]
+            ],
+            "7.3": [
+                [
+                    23,
+                    16
+                ],
+                [
+                    23,
+                    16
+                ],
+                [
+                    35,
+                    13
+                ]
+            ]
+        },
+        "refId": {
+            "7": [
+                [
+                    24,
+                    3
+                ],
+                [
+                    35,
+                    13
+                ]
+            ],
+            "7.3": [
+                [
+                    24,
+                    3
+                ],
+                [
+                    35,
+                    13
+                ]
+            ]
+        },
+        "_ReferenceId": {
+            "7": [
+                [
+                    32,
+                    10
+                ],
+                [
+                    32,
+                    10
+                ]
+            ],
+            "7.3": [
+                [
+                    32,
+                    10
+                ],
+                [
+                    32,
+                    10
+                ]
+            ]
+        },
+        "Stratum": {
+            "7": [
+                [
+                    33,
+                    11
+                ],
+                [
+                    32,
+                    23
+                ],
+                [
+                    88,
+                    5
+                ],
+                [
+                    93,
+                    17
+                ]
+            ],
+            "7.3": [
+                [
+                    33,
+                    11
+                ],
+                [
+                    32,
+                    23
+                ],
+                [
+                    88,
+                    5
+                ],
+                [
+                    93,
+                    17
+                ]
+            ]
+        },
+        "kissCode": {
+            "7": [
+                [
+                    34,
+                    13
+                ],
+                [
+                    21,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    34,
+                    13
+                ]
+            ],
+            "7.4": [
+                [
+                    21,
+                    5
+                ]
+            ]
+        },
+        "ipAddress2": {
+            "7": [
+                [
+                    36,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    36,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-f541>": {
+            "7": [
+                [
+                    36,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    36,
+                    20
+                ]
+            ]
+        },
+        "IPv4Address": {
+            "7": [
+                [
+                    37,
+                    9
+                ],
+                [
+                    40,
+                    9
+                ],
+                [
+                    43,
+                    9
+                ],
+                [
+                    46,
+                    9
+                ],
+                [
+                    49,
+                    9
+                ],
+                [
+                    52,
+                    9
+                ],
+                [
+                    55,
+                    9
+                ],
+                [
+                    58,
+                    9
+                ],
+                [
+                    61,
+                    9
+                ],
+                [
+                    64,
+                    9
+                ],
+                [
+                    67,
+                    9
+                ],
+                [
+                    70,
+                    9
+                ],
+                [
+                    73,
+                    9
+                ],
+                [
+                    76,
+                    9
+                ],
+                [
+                    79,
+                    9
+                ]
+            ],
+            "7.3": [
+                [
+                    37,
+                    9
+                ],
+                [
+                    40,
+                    9
+                ],
+                [
+                    43,
+                    9
+                ],
+                [
+                    46,
+                    9
+                ],
+                [
+                    49,
+                    9
+                ],
+                [
+                    52,
+                    9
+                ],
+                [
+                    55,
+                    9
+                ],
+                [
+                    58,
+                    9
+                ],
+                [
+                    61,
+                    9
+                ],
+                [
+                    64,
+                    9
+                ],
+                [
+                    67,
+                    9
+                ],
+                [
+                    70,
+                    9
+                ],
+                [
+                    73,
+                    9
+                ],
+                [
+                    76,
+                    9
+                ],
+                [
+                    79,
+                    9
+                ]
+            ]
+        },
+        "ipAddress3": {
+            "7": [
+                [
+                    39,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    39,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-d329>": {
+            "7": [
+                [
+                    39,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    39,
+                    20
+                ]
+            ]
+        },
+        "ipAddress4": {
+            "7": [
+                [
+                    42,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    42,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-335c>": {
+            "7": [
+                [
+                    42,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    42,
+                    20
+                ]
+            ]
+        },
+        "ipAddress5": {
+            "7": [
+                [
+                    45,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    45,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-5d26>": {
+            "7": [
+                [
+                    45,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    45,
+                    20
+                ]
+            ]
+        },
+        "ipAddress6": {
+            "7": [
+                [
+                    48,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    48,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-8c78>": {
+            "7": [
+                [
+                    48,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    48,
+                    20
+                ]
+            ]
+        },
+        "ipAddress7": {
+            "7": [
+                [
+                    51,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    51,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-3834>": {
+            "7": [
+                [
+                    51,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    51,
+                    20
+                ]
+            ]
+        },
+        "ipAddress8": {
+            "7": [
+                [
+                    54,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    54,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-72e8>": {
+            "7": [
+                [
+                    54,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    54,
+                    20
+                ]
+            ]
+        },
+        "ipAddress9": {
+            "7": [
+                [
+                    57,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    57,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-b145>": {
+            "7": [
+                [
+                    57,
+                    20
+                ]
+            ],
+            "7.3": [
+                [
+                    57,
+                    20
+                ]
+            ]
+        },
+        "ipAddress10": {
+            "7": [
+                [
+                    60,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    60,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-4c07>": {
+            "7": [
+                [
+                    60,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    60,
+                    21
+                ]
+            ]
+        },
+        "ipAddress11": {
+            "7": [
+                [
+                    63,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    63,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-98dc>": {
+            "7": [
+                [
+                    63,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    63,
+                    21
+                ]
+            ]
+        },
+        "ipAddress12": {
+            "7": [
+                [
+                    66,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    66,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-7ac4>": {
+            "7": [
+                [
+                    66,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    66,
+                    21
+                ]
+            ]
+        },
+        "ipAddress13": {
+            "7": [
+                [
+                    69,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    69,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-032c>": {
+            "7": [
+                [
+                    69,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    69,
+                    21
+                ]
+            ]
+        },
+        "ipAddress14": {
+            "7": [
+                [
+                    72,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    72,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-57da>": {
+            "7": [
+                [
+                    72,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    72,
+                    21
+                ]
+            ]
+        },
+        "ipAddress15": {
+            "7": [
+                [
+                    75,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    75,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-0f0e>": {
+            "7": [
+                [
+                    75,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    75,
+                    21
+                ]
+            ]
+        },
+        "ipAddress16": {
+            "7": [
+                [
+                    78,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    78,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-f2ae>": {
+            "7": [
+                [
+                    78,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    78,
+                    21
+                ]
+            ]
+        },
+        "NTPHeader": {
+            "7": [
+                [
+                    84,
+                    16
+                ],
+                [
+                    84,
+                    16
+                ],
+                [
+                    130,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    84,
+                    16
+                ],
+                [
+                    84,
+                    16
+                ],
+                [
+                    130,
+                    5
+                ]
+            ]
+        },
+        "LI": {
+            "7": [
+                [
+                    85,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    85,
+                    5
+                ]
+            ]
+        },
+        "VN": {
+            "7": [
+                [
+                    86,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    86,
+                    5
+                ]
+            ]
+        },
+        "Mode": {
+            "7": [
+                [
+                    87,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    87,
+                    5
+                ]
+            ]
+        },
+        "Poll": {
+            "7": [
+                [
+                    89,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    89,
+                    5
+                ]
+            ]
+        },
+        "Precision": {
+            "7": [
+                [
+                    90,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    90,
+                    5
+                ]
+            ]
+        },
+        "RootDelay": {
+            "7": [
+                [
+                    91,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    91,
+                    5
+                ]
+            ]
+        },
+        "RootDispersion": {
+            "7": [
+                [
+                    92,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    92,
+                    5
+                ]
+            ]
+        },
+        "RefId": {
+            "7": [
+                [
+                    93,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    93,
+                    5
+                ]
+            ]
+        },
+        "ReferenceId": {
+            "7": [
+                [
+                    93,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    93,
+                    5
+                ]
+            ]
+        },
+        "ReferenceTimestamp": {
+            "7": [
+                [
+                    94,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    94,
+                    5
+                ]
+            ]
+        },
+        "OriginateTimestamp": {
+            "7": [
+                [
+                    95,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    95,
+                    5
+                ]
+            ]
+        },
+        "ReceiveTimestamp": {
+            "7": [
+                [
+                    96,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    96,
+                    5
+                ]
+            ]
+        },
+        "TransmitTimestamp": {
+            "7": [
+                [
+                    97,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    97,
+                    5
+                ]
+            ]
+        },
+        "_NTPBody": {
+            "7": [
+                [
+                    100,
+                    10
+                ],
+                [
+                    100,
+                    10
+                ]
+            ],
+            "7.3": [
+                [
+                    100,
+                    10
+                ],
+                [
+                    100,
+                    10
+                ]
+            ]
+        },
+        "TotalLength": {
+            "7": [
+                [
+                    101,
+                    11
+                ],
+                [
+                    100,
+                    19
+                ],
+                [
+                    131,
+                    13
+                ]
+            ],
+            "7.3": [
+                [
+                    101,
+                    11
+                ],
+                [
+                    100,
+                    19
+                ],
+                [
+                    131,
+                    13
+                ]
+            ]
+        },
+        "NoExtNoMac": {
+            "7": [
+                [
+                    102,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    102,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-865c>": {
+            "7": [
+                [
+                    102,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    102,
+                    21
+                ]
+            ]
+        },
+        "Empty": {
+            "7": [
+                [
+                    103,
+                    7
+                ]
+            ],
+            "7.3": [
+                [
+                    103,
+                    7
+                ]
+            ]
+        },
+        "MacOnly": {
+            "7": [
+                [
+                    105,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    105,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-8cd9>": {
+            "7": [
+                [
+                    105,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    105,
+                    21
+                ]
+            ]
+        },
+        "MAC": {
+            "7": [
+                [
+                    106,
+                    7
+                ],
+                [
+                    113,
+                    7
+                ],
+                [
+                    117,
+                    7
+                ],
+                [
+                    121,
+                    7
+                ]
+            ],
+            "7.3": [
+                [
+                    106,
+                    7
+                ],
+                [
+                    113,
+                    7
+                ],
+                [
+                    117,
+                    7
+                ],
+                [
+                    121,
+                    7
+                ]
+            ]
+        },
+        "Ext1Mac": {
+            "7": [
+                [
+                    111,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    111,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-887f>": {
+            "7": [
+                [
+                    111,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    111,
+                    21
+                ]
+            ]
+        },
+        "Extensions": {
+            "7": [
+                [
+                    112,
+                    7
+                ],
+                [
+                    116,
+                    7
+                ],
+                [
+                    120,
+                    7
+                ]
+            ],
+            "7.3": [
+                [
+                    112,
+                    7
+                ],
+                [
+                    116,
+                    7
+                ],
+                [
+                    120,
+                    7
+                ]
+            ]
+        },
+        "Ext2Mac": {
+            "7": [
+                [
+                    115,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    115,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-8cab>": {
+            "7": [
+                [
+                    115,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    115,
+                    21
+                ]
+            ]
+        },
+        "Ext3Mac": {
+            "7": [
+                [
+                    119,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    119,
+                    21
+                ]
+            ]
+        },
+        "<anoymous-b1e6>": {
+            "7": [
+                [
+                    119,
+                    21
+                ]
+            ],
+            "7.3": [
+                [
+                    119,
+                    21
+                ]
+            ]
+        },
+        "NTPMessage": {
+            "7": [
+                [
+                    127,
+                    27
+                ],
+                [
+                    127,
+                    27
+                ]
+            ],
+            "7.3": [
+                [
+                    127,
+                    27
+                ],
+                [
+                    127,
+                    27
+                ]
+            ]
+        },
+        "header": {
+            "7": [
+                [
+                    130,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    130,
+                    5
+                ]
+            ]
+        },
+        "body": {
+            "7": [
+                [
+                    131,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    131,
+                    5
+                ]
+            ]
+        },
+        "NTPBody": {
+            "7": [
+                [
+                    131,
+                    5
+                ]
+            ],
+            "7.3": [
+                [
+                    131,
+                    5
+                ]
+            ]
+        },
+        "KissCodeEntry": {
+            "7": [
+                [
+                    20,
+                    27
+                ],
+                [
+                    20,
+                    27
+                ]
+            ],
+            "7.4": [
+                [
+                    20,
+                    27
+                ],
+                [
+                    20,
+                    27
+                ]
+            ]
+        }
+    },
+    "name_to_section_py": {
+        "result:108": "7.3",
+        "version:78": "7.3",
+        "stratum:80": "7.3",
+        "result:47": "7.3",
+        "current_result:57": "7.3",
+        "length:23": "7.3",
+        "mac:148": "7.3",
+        "rootdisp:96": "7.3",
+        "extension_fields:126": "7.3",
+        "current_result:3": "7.3",
+        "remaining_bytes:54": "7.3",
+        "leap:77": "7.3",
+        "precision:82": "7.3",
+        "reftime:102": "7.3",
+        "main:161": "7.3",
+        "mode:79": "7.3",
+        "org:103": "7.3",
+        "first_word:76": "7.3",
+        "value:34": "7.3",
+        "xmt:105": "7.3",
+        "padding_length:38": "7.3",
+        "poll:81": "7.3",
+        "ext_len:137": "7.3",
+        "remaining_input:3": "7.3",
+        "field_type:22": "7.3",
+        "keyid:150": "7.3",
+        "remaining_input:57": "7.3",
+        "parse_packet_ntp_extension_field:3": "7.3",
+        "data:168": "7.3",
+        "parse_packet_ntp_header:57": "7.3",
+        "offset:125": "7.3",
+        "padding:44": "7.3",
+        "mac:152": "7.3",
+        "dgst:151": "7.3",
+        "rootdelay:95": "7.3",
+        "rec:104": "7.3",
+        "padding:40": "7.3",
+        "refid:99": "7.3",
+        "parse_packet_ntp_extension_field:1": "7.5",
+        "padding:42": "7.5",
+        "remaining_bytes:52": "7.5",
+        "data:59": "7.5",
+        "length:21": "7.5",
+        "padding_length:36": "7.5",
+        "value:32": "7.5",
+        "result:45": "7.5",
+        "remaining_input:1": "7.5",
+        "current_result:1": "7.5",
+        "field_type:20": "7.5",
+        "main:55": "7.5",
+        "padding:38": "7.5",
+        "data:240": "7",
+        "receive_timestamp:206": "7",
+        "kiss_code:198": "7",
+        "stratum:184": "7",
+        "current_result:160": "7",
+        "li:180": "7",
+        "vn:181": "7",
+        "reference_id:190": "7",
+        "originate_timestamp:205": "7",
+        "root_dispersion:189": "7",
+        "remaining_input:160": "7",
+        "result:210": "7",
+        "reference_timestamp:204": "7",
+        "transmit_timestamp:207": "7",
+        "precision:186": "7",
+        "parse_packet_kiss_o_death_packet:160": "7",
+        "first_byte:179": "7",
+        "root_delay:188": "7",
+        "mode:182": "7",
+        "poll:185": "7",
+        "main:233": "7",
+        "vn:22": "7.4",
+        "first_byte:20": "7.4",
+        "mode:23": "7.4",
+        "root_delay:29": "7.4",
+        "stratum:25": "7.4",
+        "result:51": "7.4",
+        "reference_timestamp:45": "7.4",
+        "reference_id:31": "7.4",
+        "main:74": "7.4",
+        "parse_packet_kiss_o_death_packet:1": "7.4",
+        "data:78": "7.4",
+        "receive_timestamp:47": "7.4",
+        "poll:26": "7.4",
+        "kiss_code:39": "7.4",
+        "precision:27": "7.4",
+        "originate_timestamp:46": "7.4",
+        "li:21": "7.4",
+        "root_dispersion:30": "7.4",
+        "transmit_timestamp:48": "7.4"
+    },
+    "line_to_element_py": {
+        "1": [
+            "7.5",
+            [
+                "parse_packet_kiss_o_death_packet",
+                "remaining_input",
+                "current_result"
+            ]
+        ],
+        "20": [
+            "7.5",
+            [
+                "first_byte"
+            ]
+        ],
+        "21": [
+            "7.5",
+            [
+                "li"
+            ]
+        ],
+        "32": [
+            "7.5",
+            [
+                "value"
+            ]
+        ],
+        "36": [
+            "7.5",
+            [
+                "padding_length"
+            ]
+        ],
+        "38": [
+            "7.5",
+            [
+                "padding_length"
+            ]
+        ],
+        "42": [
+            "7.5",
+            [
+                "padding"
+            ]
+        ],
+        "45": [
+            "7.5",
+            [
+                "reference_timestamp"
+            ]
+        ],
+        "52": [
+            "7.5",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "55": [
+            "7.5",
+            [
+                "main"
+            ]
+        ],
+        "59": [
+            "7.5",
+            [
+                "data"
+            ]
+        ],
+        "3": [
+            "7.3",
+            [
+                "parse_packet_ntp_extension_field",
+                "remaining_input",
+                "current_result"
+            ]
+        ],
+        "22": [
+            "7.4",
+            [
+                "field_type"
+            ]
+        ],
+        "23": [
+            "7.4",
+            [
+                "length"
+            ]
+        ],
+        "34": [
+            "7.3",
+            [
+                "value"
+            ]
+        ],
+        "40": [
+            "7.3",
+            [
+                "padding"
+            ]
+        ],
+        "44": [
+            "7.3",
+            [
+                "padding"
+            ]
+        ],
+        "47": [
+            "7.4",
+            [
+                "result"
+            ]
+        ],
+        "54": [
+            "7.3",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "57": [
+            "7.3",
+            [
+                "remaining_input",
+                "current_result",
+                "parse_packet_ntp_header"
+            ]
+        ],
+        "76": [
+            "7.3",
+            [
+                "first_word"
+            ]
+        ],
+        "77": [
+            "7.3",
+            [
+                "leap"
+            ]
+        ],
+        "78": [
+            "7.4",
+            [
+                "version"
+            ]
+        ],
+        "79": [
+            "7.3",
+            [
+                "mode"
+            ]
+        ],
+        "80": [
+            "7.3",
+            [
+                "stratum"
+            ]
+        ],
+        "81": [
+            "7.3",
+            [
+                "poll"
+            ]
+        ],
+        "82": [
+            "7.3",
+            [
+                "precision"
+            ]
+        ],
+        "95": [
+            "7.3",
+            [
+                "rootdelay"
+            ]
+        ],
+        "96": [
+            "7.3",
+            [
+                "rootdisp"
+            ]
+        ],
+        "99": [
+            "7.3",
+            [
+                "refid"
+            ]
+        ],
+        "102": [
+            "7.3",
+            [
+                "reftime"
+            ]
+        ],
+        "103": [
+            "7.3",
+            [
+                "org"
+            ]
+        ],
+        "104": [
+            "7.3",
+            [
+                "rec"
+            ]
+        ],
+        "105": [
+            "7.3",
+            [
+                "xmt"
+            ]
+        ],
+        "108": [
+            "7.3",
+            [
+                "result"
+            ]
+        ],
+        "125": [
+            "7.3",
+            [
+                "offset"
+            ]
+        ],
+        "126": [
+            "7.3",
+            [
+                "extension_fields"
+            ]
+        ],
+        "137": [
+            "7.3",
+            [
+                "ext_len"
+            ]
+        ],
+        "148": [
+            "7.3",
+            [
+                "mac"
+            ]
+        ],
+        "150": [
+            "7.3",
+            [
+                "keyid"
+            ]
+        ],
+        "151": [
+            "7.3",
+            [
+                "dgst"
+            ]
+        ],
+        "152": [
+            "7.3",
+            [
+                "mac"
+            ]
+        ],
+        "161": [
+            "7.3",
+            [
+                "main"
+            ]
+        ],
+        "168": [
+            "7.3",
+            [
+                "data"
+            ]
+        ],
+        "160": [
+            "7",
+            [
+                "parse_packet_kiss_o_death_packet",
+                "remaining_input",
+                "current_result"
+            ]
+        ],
+        "179": [
+            "7",
+            [
+                "first_byte"
+            ]
+        ],
+        "180": [
+            "7",
+            [
+                "li"
+            ]
+        ],
+        "181": [
+            "7",
+            [
+                "vn"
+            ]
+        ],
+        "182": [
+            "7",
+            [
+                "mode"
+            ]
+        ],
+        "184": [
+            "7",
+            [
+                "stratum"
+            ]
+        ],
+        "185": [
+            "7",
+            [
+                "poll"
+            ]
+        ],
+        "186": [
+            "7",
+            [
+                "precision"
+            ]
+        ],
+        "188": [
+            "7",
+            [
+                "root_delay"
+            ]
+        ],
+        "189": [
+            "7",
+            [
+                "root_dispersion"
+            ]
+        ],
+        "190": [
+            "7",
+            [
+                "reference_id"
+            ]
+        ],
+        "198": [
+            "7",
+            [
+                "kiss_code"
+            ]
+        ],
+        "204": [
+            "7",
+            [
+                "reference_timestamp"
+            ]
+        ],
+        "205": [
+            "7",
+            [
+                "originate_timestamp"
+            ]
+        ],
+        "206": [
+            "7",
+            [
+                "receive_timestamp"
+            ]
+        ],
+        "207": [
+            "7",
+            [
+                "transmit_timestamp"
+            ]
+        ],
+        "210": [
+            "7",
+            [
+                "result"
+            ]
+        ],
+        "233": [
+            "7",
+            [
+                "main"
+            ]
+        ],
+        "240": [
+            "7",
+            [
+                "data"
+            ]
+        ],
+        "25": [
+            "7.4",
+            [
+                "stratum"
+            ]
+        ],
+        "26": [
+            "7.4",
+            [
+                "poll"
+            ]
+        ],
+        "27": [
+            "7.4",
+            [
+                "precision"
+            ]
+        ],
+        "29": [
+            "7.4",
+            [
+                "root_delay"
+            ]
+        ],
+        "30": [
+            "7.4",
+            [
+                "root_dispersion"
+            ]
+        ],
+        "31": [
+            "7.4",
+            [
+                "reference_id"
+            ]
+        ],
+        "39": [
+            "7.4",
+            [
+                "kiss_code"
+            ]
+        ],
+        "46": [
+            "7.4",
+            [
+                "originate_timestamp"
+            ]
+        ],
+        "48": [
+            "7.4",
+            [
+                "transmit_timestamp"
+            ]
+        ],
+        "51": [
+            "7.4",
+            [
+                "result"
+            ]
+        ],
+        "74": [
+            "7.4",
+            [
+                "main"
+            ]
+        ]
+    },
+    "py_function_scope": {
+        "parse_packet_ntp_extension_field": [
+            "7.5",
+            [
+                3,
+                55
+            ]
+        ],
+        "main": [
+            "7.5",
+            [
+                233,
+                251
+            ]
+        ],
+        "parse_packet_ntp_header": [
+            "7.3",
+            [
+                57,
+                158
+            ]
+        ],
+        "parse_packet_kiss_o_death_packet": [
+            "7.4",
+            [
+                160,
+                231
+            ]
+        ]
+    }
+}

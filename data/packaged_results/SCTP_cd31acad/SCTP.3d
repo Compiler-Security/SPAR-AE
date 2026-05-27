@@ -1,0 +1,195 @@
+// SCTP Optional/Variable-Length Parameter Format
+casetype _SCTPParameterBody(UINT16BE Type, UINT16BE Length) {
+  switch (Type) {
+    case 5: struct { unit Empty { Length == 8 }; UINT8BE IPv4Address[4]; } IPv4AddressParameter;
+    case 6: struct { unit Empty { Length == 20 }; UINT8BE IPv6Address[16]; } IPv6AddressParameter;
+    case 7: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE CookieValue[:byte-size Length - 4]; } StateCookieParameter;
+    case 8: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE UnrecognizedValue[:byte-size Length - 4]; } UnrecognizedParameter;
+    case 9: struct { unit Empty { Length == 8 }; UINT32BE CookieLifeSpanIncrement; } CookiePreservativeParameter;
+    case 11: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE HostName[:byte-size Length - 4]; } HostNameAddressParameter;
+    case 12: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT16BE AddressTypes[:byte-size Length - 4]; } SupportedAddressTypesParameter;
+    case 1: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE HeartbeatInfo[:byte-size Length - 4]; } HeartbeatInfoParameter;
+  }
+} SCTPParameterBody;
+
+typedef struct _SCTPParameter {
+  UINT16BE Type;
+  UINT16BE Length { Length >= 4 && (Length - 4) % 4 == 0 };
+  SCTPParameterBody(Type, Length) Value;
+} SCTPParameter;
+
+// Error Cause Format
+casetype _SCTPErrorCauseBody(UINT16BE CauseCode, UINT16BE Length) {
+  switch (CauseCode) {
+    case 1: struct { unit Empty { Length == 8 }; UINT16BE StreamIdentifier; UINT16BE Reserved { Reserved == 0 }; } InvalidStreamIdentifier;
+    case 2: struct { unit Empty { Length >= 8 && (Length - 8) % 2 == 0 }; UINT32BE NumMissingParams; UINT16BE MissingParamTypes[:byte-size (Length - 8)]; } MissingMandatoryParameter;
+    case 3: struct { unit Empty { Length == 8 }; UINT32BE Staleness; } StaleCookieError;
+    case 4: struct { unit Empty { Length == 4 }; } OutOfResource;
+    case 5: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE UnresolvableAddress[:byte-size (Length - 4)]; } UnresolvableAddress;
+    case 6: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE UnrecognizedChunk[:byte-size (Length - 4)]; } UnrecognizedChunkType;
+    case 7: struct { unit Empty { Length == 4 }; } InvalidMandatoryParameter;
+    case 8: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE UnrecognizedParameters[:byte-size (Length - 4)]; } UnrecognizedParameters;
+    case 9: struct { unit Empty { Length == 8 }; UINT32BE TSNValue; } NoUserData;
+    case 10: struct { unit Empty { Length == 4 }; } CookieReceivedWhileShuttingDown;
+    case 11: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE NewAddressTLVs[:byte-size (Length - 4)]; } RestartWithNewAddresses;
+    case 12: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE AbortReason[:byte-size (Length - 4)]; } UserInitiatedAbort;
+    case 13: struct { unit Empty { Length >= 4 && (Length - 4) % 4 == 0 }; UINT8BE AdditionalInfo[:byte-size (Length - 4)]; } ProtocolViolation;
+  }
+} SCTPErrorCauseBody;
+
+typedef struct _SCTPErrorCause {
+  UINT16BE CauseCode;
+  UINT16BE Length { Length >= 4 && (Length - 4) % 4 == 0 };
+  SCTPErrorCauseBody(CauseCode, Length) Value;
+} SCTPErrorCause;
+
+// Gap Ack Block for SACK chunk
+typedef struct _GapAckBlock {
+  UINT16BE GapAckBlockStart;
+  UINT16BE GapAckBlockEnd;
+} GapAckBlock;
+
+// DATA Chunk (Type 0)
+typedef struct _SCTPDataChunk {
+  UINT8BE Reserved:5 { Reserved == 0 };
+  UINT8BE U:1;
+  UINT8BE B:1;
+  UINT8BE E:1;
+  UINT16BE Length { Length >= 16 && Length % 4 == 0 };
+  UINT32BE TSN;
+  UINT16BE StreamIdentifier;
+  UINT16BE StreamSeqNum;
+  UINT32BE PayloadProtocolID;
+  UINT8BE UserData[:byte-size (Length - 16)];
+} SCTPDataChunk;
+
+// INIT Chunk (Type 1)
+typedef struct _SCTPInitChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length >= 20 };
+  UINT32BE InitiateTag { InitiateTag != 0 };
+  UINT32BE ARwnd;
+  UINT16BE NumOutboundStreams { NumOutboundStreams != 0 };
+  UINT16BE NumInboundStreams { NumInboundStreams != 0 };
+  UINT32BE InitialTSN;
+  SCTPParameter Parameters[:byte-size (Length - 20)];
+} SCTPInitChunk;
+
+// INIT ACK Chunk (Type 2)
+typedef struct _SCTPInitAckChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length >= 20 };
+  UINT32BE InitiateTag { InitiateTag != 0 };
+  UINT32BE ARwnd;
+  UINT16BE NumOutboundStreams { NumOutboundStreams != 0 };
+  UINT16BE NumInboundStreams { NumInboundStreams != 0 };
+  UINT32BE InitialTSN;
+  SCTPParameter Parameters[:byte-size (Length - 20)];
+} SCTPInitAckChunk;
+
+// SACK Chunk (Type 3)
+typedef struct _SCTPSackChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length >= 16 };
+  UINT32BE CumulativeTSNAck;
+  UINT32BE ARwnd;
+  UINT16BE NumGapAckBlocks { NumGapAckBlocks <= 16383 };
+  UINT16BE NumDuplicateTSNs { NumDuplicateTSNs <= 16383 };
+  GapAckBlock GapAckBlocks[:byte-size (NumGapAckBlocks * 4)];
+  UINT32BE DuplicateTSNs[:byte-size (NumDuplicateTSNs * 4)];
+} SCTPSackChunk;
+
+// HEARTBEAT Chunk (Type 4)
+typedef struct _SCTPHeartbeatChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length >= 4 };
+  SCTPParameter Parameters[:byte-size (Length - 4)];
+} SCTPHeartbeatChunk;
+
+// HEARTBEAT ACK Chunk (Type 5)
+typedef struct _SCTPHeartbeatAckChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length >= 4 };
+  SCTPParameter Parameters[:byte-size (Length - 4)];
+} SCTPHeartbeatAckChunk;
+
+// ABORT Chunk (Type 6)
+typedef struct _SCTPAbortChunk {
+  UINT8BE Reserved:7 { Reserved == 0 };
+  UINT8BE T:1;
+  UINT16BE Length { Length >= 4 };
+  SCTPErrorCause ErrorCauses[:byte-size (Length - 4)];
+} SCTPAbortChunk;
+
+// SHUTDOWN Chunk (Type 7)
+typedef struct _SCTPShutdownChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length == 8 };
+  UINT32BE CumulativeTSNAck;
+} SCTPShutdownChunk;
+
+// SHUTDOWN ACK Chunk (Type 8)
+typedef struct _SCTPShutdownAckChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length == 4 };
+} SCTPShutdownAckChunk;
+
+// ERROR Chunk (Type 9)
+typedef struct _SCTPErrorChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length >= 4 };
+  SCTPErrorCause ErrorCauses[:byte-size (Length - 4)];
+} SCTPErrorChunk;
+
+// COOKIE ECHO Chunk (Type 10)
+typedef struct _SCTPCookieEchoChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length >= 4 };
+  UINT8BE Cookie[:byte-size (Length - 4)];
+} SCTPCookieEchoChunk;
+
+// COOKIE ACK Chunk (Type 11)
+typedef struct _SCTPCookieAckChunk {
+  UINT8BE ChunkFlags { ChunkFlags == 0 };
+  UINT16BE Length { Length == 4 };
+} SCTPCookieAckChunk;
+
+// SHUTDOWN COMPLETE Chunk (Type 14)
+typedef struct _SCTPShutdownCompleteChunk {
+  UINT8BE Reserved:7 { Reserved == 0 };
+  UINT8BE T:1;
+  UINT16BE Length { Length == 4 };
+} SCTPShutdownCompleteChunk;
+
+// Chunk Union
+casetype _SCTPChunk(UINT8BE ChunkType) {
+  switch (ChunkType) {
+    case 0: SCTPDataChunk Data;
+    case 1: SCTPInitChunk Init;
+    case 2: SCTPInitAckChunk InitAck;
+    case 3: SCTPSackChunk Sack;
+    case 4: SCTPHeartbeatChunk Heartbeat;
+    case 5: SCTPHeartbeatAckChunk HeartbeatAck;
+    case 6: SCTPAbortChunk Abort;
+    case 7: SCTPShutdownChunk Shutdown;
+    case 8: SCTPShutdownAckChunk ShutdownAck;
+    case 9: SCTPErrorChunk Error;
+    case 10: SCTPCookieEchoChunk CookieEcho;
+    case 11: SCTPCookieAckChunk CookieAck;
+    case 14: SCTPShutdownCompleteChunk ShutdownComplete;
+  }
+} SCTPChunk;
+
+typedef struct _SCTPChunkWrapper {
+  UINT8BE ChunkType { ChunkType >= 0 && ChunkType <= 11 || ChunkType == 14 };
+  SCTPChunk(ChunkType) chunk;
+} SCTPChunkWrapper;
+
+// SCTP Common Header
+entrypoint typedef struct _SCTPPacket(UINT32BE TotalLength) where (TotalLength >= 12) {
+  UINT16BE SourcePort { SourcePort != 0 };
+  UINT16BE DestinationPort { DestinationPort != 0 };
+  UINT32BE VerificationTag;
+  UINT32BE Checksum;
+  SCTPChunkWrapper Chunks[:byte-size (TotalLength - 12)];
+} SCTPPacket;

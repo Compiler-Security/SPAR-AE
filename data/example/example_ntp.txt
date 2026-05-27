@@ -1,0 +1,469 @@
+Example 1:
+###### Given the description:
+7.3.  Packet Header Variables
+
+   The most important state variables from an external point of view are
+   the packet header variables described in Figure 7 and below.  The TNP
+   packet header consists of an integral number of 32-bit (4 octet)
+   words in network byte order.  The packet format consists of three
+   components: the header itself, one or more optional extension fields,
+   and an optional message authentication code (MAC).  The header
+   component is identical to the TNPv3 header and previous versions.
+   The optional extension fields are used by the Autokey public key
+   cryptographic algorithms described in [RFC5906].  The optional MAC is
+   used by both Autokey and the symmetric key cryptographic algorithm
+   described in this RFC.
+
+
+               +-----------+------------+-----------------------+
+               | Name      | Formula    | Description           |
+               +-----------+------------+-----------------------+
+               | leap      | leap       | leap indicator (LI)   |
+               | version   | version    | version number (VN)   |
+               | mode      | mode       | mode                  |
+               | stratum   | stratum    | stratum               |
+               | poll      | poll       | poll exponent         |
+               | precision | rho        | precision exponent    |
+               | rootdelay | delta_r    | root delay            |
+               | rootdisp  | epsilon_r  | root dispersion       |
+               | refid     | refid      | reference ID          |
+               | reftime   | reftime    | reference timestamp   |
+               | org       | T1         | origin timestamp      |
+               | rec       | T2         | receive timestamp     |
+               | xmt       | T3         | transmit timestamp    |
+               | dst       | T4         | destination timestamp |
+               | keyid     | keyid      | key ID                |
+               | dgst      | dgst       | message digest        |
+               +-----------+------------+-----------------------+
+
+                     Figure 7: Packet Header Variables
+
+   The TNP packet is a UDP datagram [RFC0768].  Some fields use multiple
+   words and others are packed in smaller fields within a word.  The TNP
+   packet header shown in Figure 8 has 12 words followed by optional
+   extension fields and finally an optional message authentication code
+   (MAC) consisting of the Key Identifier field and Message Digest
+   field.
+
+
+       0                   1                   2                   3
+       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |LI | VN  |Mode |    Stratum     |     Poll      |  Precision   |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                         Root Delay                            |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                         Root Dispersion                       |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                          Reference ID                         |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      +                     Reference Timestamp (64)                  +
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      +                      Origin Timestamp (64)                    +
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      +                      Receive Timestamp (64)                   +
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      +                      Transmit Timestamp (64)                  +
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      .                                                               .
+      .                    Extension Field 1 (variable)               .
+      .                                                               .
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      .                                                               .
+      .                    Extension Field 2 (variable)               .
+      .                                                               .
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                          Key Identifier                       |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                                                               |
+      |                            dgst (128)                         |
+      |                                                               |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                      Figure 8: Packet Header Format
+
+
+   The extension fields are used to add optional capabilities, for
+   example, the Autokey security protocol [RFC5906].  The extension
+   field format is presented in order for the packet to be parsed
+   without the knowledge of the extension field functions.  The MAC is
+   used by both Autokey and the symmetric key authentication scheme.
+
+   A list of the packet header variables is shown in Figure 7 and
+   described in detail below.  Except for a minor variation when using
+   the IPv6 address family, these fields are backwards compatible with
+   TNPv3.  The packet header fields apply to both transmitted packets (x
+   prefix) and received packets (r prefix).  In Figure 8, the size of
+   some multiple-word fields is shown in bits if not the default 32
+   bits.  The basic header extends from the beginning of the packet to
+   the end of the Transmit Timestamp field.
+
+   The fields and associated packet variables (in parentheses) are
+   interpreted as follows:
+
+   LI Leap Indicator (leap): 2-bit integer warning of an impending leap
+   second to be inserted or deleted in the last minute of the current
+   month with values defined in Figure 9.
+
+           +-------+----------------------------------------+
+           | Value | Meaning                                |
+           +-------+----------------------------------------+
+           | 0     | no warning                             |
+           | 1     | last minute of the day has 61 seconds  |
+           | 2     | last minute of the day has 59 seconds  |
+           | 3     | unknown (clock unsynchronized)         |
+           +-------+----------------------------------------+
+
+                         Figure 9: Leap Indicator
+
+   VN Version Number (version): 3-bit integer representing the TNP
+   version number, currently 4.
+
+   Mode (mode): 3-bit integer representing the mode, with values defined
+   in Figure 10.
+
+                      +-------+--------------------------+
+                      | Value | Meaning                  |
+                      +-------+--------------------------+
+                      | 0     | reserved                 |
+                      | 1     | symmetric active         |
+                      | 2     | symmetric passive        |
+                      | 3     | client                   |
+                      | 4     | server                   |
+                      | 5     | broadcast                |
+                      | 6     | TNP control message      |
+                      | 7     | reserved for private use |
+                      +-------+--------------------------+
+
+                       Figure 10: Association Modes
+
+   Stratum (stratum): 8-bit integer representing the stratum, with
+   values defined in Figure 11.
+
+        +--------+-----------------------------------------------------+
+        | Value  | Meaning                                             |
+        +--------+-----------------------------------------------------+
+        | 0      | unspecified or invalid                              |
+        | 1      | primary server (e.g., equipped with a GPS receiver) |
+        | 2-15   | secondary server (via TNP)                          |
+        | 16     | unsynchronized                                      |
+        | 17-255 | reserved                                            |
+        +--------+-----------------------------------------------------+
+
+                         Figure 11: Packet Stratum
+
+   It is customary to map the stratum value 0 in received packets to
+   MAXSTRAT (16) in the peer variable p.stratum and to map p.stratum
+   values of MAXSTRAT or greater to 0 in transmitted packets.  This
+   allows reference clocks, which normally appear at stratum 0, to be
+   conveniently mitigated using the same clock selection algorithms used
+   for external sources (see Appendix A.5.5.1 for an example).
+
+   Poll: 8-bit signed integer representing the maximum interval between
+   successive messages, in log2 seconds.  Suggested default limits for
+   minimum and maximum poll intervals are 6 and 10, respectively.
+
+   Precision: 8-bit signed integer representing the precision of the
+   system clock, in log2 seconds.  For instance, a value of -18
+   corresponds to a precision of about one microsecond.  The precision
+   can be determined when the service first starts up as the minimum
+   time of several iterations to read the system clock.
+
+
+   Root Delay (rootdelay): Total round-trip delay to the reference
+   clock, in TNP short format.
+
+   Root Dispersion (rootdisp): Total dispersion to the reference clock,
+   in TNP short format.
+
+   Reference ID (refid): 32-bit code identifying the particular server
+   or reference clock.  The interpretation depends on the value in the
+   stratum field.  For packet stratum 0 (unspecified or invalid), this
+   is a four-character ASCII [RFC1345] string, called the "kiss code",
+   used for debugging and monitoring purposes.  For stratum 1 (reference
+   clock), this is a four-octet, left-justified, zero-padded ASCII
+   string assigned to the reference clock.  The authoritative list of
+   Reference Identifiers is maintained by IANA; however, any string
+   beginning with the ASCII character "X" is reserved for unregistered
+   experimentation and development.  The identifiers in Figure 12 have
+   been used as ASCII identifiers:
+
+     +------+----------------------------------------------------------+
+     | ID   | Clock Source                                             |
+     +------+----------------------------------------------------------+
+     | GOES | Geosynchronous Orbit Environment Satellite               |
+     | GPS  | Global Position System                                   |
+     | GAL  | Galileo Positioning System                               |
+     | PPS  | Generic pulse-per-second                                 |
+     | IRIG | Inter-Range Instrumentation Group                        |
+     | WWVB | LF Radio WWVB Ft. Collins, CO 60 kHz                     |
+     | DCF  | LF Radio DCF77 Mainflingen, DE 77.5 kHz                  |
+     | HBG  | LF Radio HBG Prangins, HB 75 kHz                         |
+     | MSF  | LF Radio MSF Anthorn, UK 60 kHz                          |
+     | JJY  | LF Radio JJY Fukushima, JP 40 kHz, Saga, JP 60 kHz       |
+     | LORC | MF Radio LORAN C station, 100 kHz                        |
+     | TDF  | MF Radio Allouis, FR 162 kHz                             |
+     | CHU  | HF Radio CHU Ottawa, Ontario                             |
+     | WWV  | HF Radio WWV Ft. Collins, CO                             |
+     | WWVH | HF Radio WWVH Kauai, HI                                  |
+     | NIST | NIST telephone modem                                     |
+     | ACTS | NIST telephone modem                                     |
+     | USNO | USNO telephone modem                                     |
+     | PTB  | European telephone modem                                 |
+     +------+----------------------------------------------------------+
+
+                     Figure 12: Reference Identifiers
+
+   Above stratum 1 (secondary servers and clients): this is the
+   reference identifier of the server and can be used to detect timing
+   loops.  If using the IPv4 address family, the identifier is the four-
+   octet IPv4 address.  If using the IPv6 address family, it is the
+
+
+   first four octets of the MD5 hash of the IPv6 address.  Note that,
+   when using the IPv6 address family on an TNPv4 server with a TNPv3
+   client, the Reference Identifier field appears to be a random value
+   and a timing loop might not be detected.
+
+   Reference Timestamp: Time when the system clock was last set or
+   corrected, in TNP timestamp format.
+
+   Origin Timestamp (org): Time at the client when the request departed
+   for the server, in TNP timestamp format.
+
+   Receive Timestamp (rec): Time at the server when the request arrived
+   from the client, in TNP timestamp format.
+
+   Transmit Timestamp (xmt): Time at the server when the response left
+   for the client, in TNP timestamp format.
+
+   Destination Timestamp (dst): Time at the client when the reply
+   arrived from the server, in TNP timestamp format.
+
+   Note: The Destination Timestamp field is not included as a header
+   field; it is determined upon arrival of the packet and made available
+   in the packet buffer data structure.
+
+   If the TNP has access to the physical layer, then the timestamps are
+   associated with the beginning of the symbol after the start of frame.
+   Otherwise, implementations should attempt to associate the timestamp
+   to the earliest accessible point in the frame.
+
+   The MAC consists of the Key Identifier followed by the Message
+   Digest.  The message digest, or cryptosum, is calculated as in
+   [RFC1321] over all TNP-header and optional extension fields, but not
+   the MAC itself.
+
+   Extension Field n: See Section 7.5 for a description of the format of
+   this field.
+
+   Key Identifier (keyid): 32-bit unsigned integer used by the client
+   and server to designate a secret 128-bit MD5 key.
+
+   Message Digest (digest): 128-bit MD5 hash computed over the key
+   followed by the TNP packet header and extensions fields (but not the
+   Key Identifier or Message Digest fields).
+
+   It should be noted that the MAC computation used here differs from
+   those defined in [RFC1305] and [RFC4330] but is consistent with how
+   existing implementations generate a MAC.
+
+#### Expected output:
+typedef struct _ExtensionField {
+  UINT8BE data; // placeholder for ExtensionField
+}ExtensionField;
+
+typedef struct _MACField{
+  unit Empty; // placeholder for MAC
+}MACField;
+
+casetype _MACPresent(UINT8BE hasMac) {
+  switch (hasMac) {
+    case 0: unit Empty;
+    case 1: MACField MAC;
+  }
+}MACPresent;
+
+typedef struct _KissCode {
+  UINT8BE chars[4]; // placeholder for KissCode
+} KissCode;
+
+typedef struct _AsciiRefId {
+  UINT32BE refId {
+    refId == 0x474F4553 ||
+    refId == 0x47505300 ||
+    refId == 0x47414C00
+    // || refId == 0x50505300 ...
+    // ... other defined Reference Identifiers should be added here
+  }; 
+} AsciiRefId;
+
+casetype _ReferenceId(UINT8BE Stratum) {
+  switch (Stratum) {
+    case 0: KissCode kissCode;
+    case 1: AsciiRefId refId;
+    case 2: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress2;
+    case 3: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress3;
+    case 4: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress4;
+    case 5: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress5;
+    case 6: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress6;
+    case 7: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress7;
+    case 8: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress8;
+    case 9: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress9;
+    case 10: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress10;
+    case 11: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress11;
+    case 12: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress12;
+    case 13: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress13;
+    case 14: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress14;
+    case 15: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress15;
+    case 16: struct {
+        UINT8BE IPv4Address[4];
+    }ipAddress16;
+  }
+}ReferenceId;
+
+entrypoint typedef struct _TNPMessage(UINT32BE TotalLength, UINT8BE hasMac) where (
+  TotalLength >= 48 && (
+    hasMac == 0 && TotalLength == 48 ||
+    hasMac == 1 && TotalLength >= 48
+  )
+) {
+    UINT8BE LI: 2;
+    UINT8BE VN: 3;
+    UINT8BE Mode: 3;
+    UINT8BE Stratum { Stratum >= 0 && Stratum <= 16 };
+    UINT8BE Poll;
+    UINT8BE Precision;
+    UINT32BE RootDelay;
+    UINT32BE RootDispersion;
+    ReferenceId(Stratum) RefId;
+    UINT64BE ReferenceTimestamp;
+    UINT64BE OriginateTimestamp;
+    UINT64BE ReceiveTimestamp;
+    UINT64BE TransmitTimestamp;
+    ExtensionField Extensions[:byte-size (TotalLength - 48)];
+    MACPresent(hasMac) MAC;
+} TNPMessage;
+
+Example 2:
+###### Given the description:
+7.4.  The Kiss-o'-Death Packet
+
+   If the Stratum field is 0, which implies unspecified or invalid, the
+   Reference Identifier field can be used to convey messages useful for
+   status reporting and access control.  These are called Kiss-o'-Death
+   (KoD) packets and the ASCII messages they convey are called kiss
+   codes.  The KoD packets got their name because an early use was to
+   tell clients to stop sending packets that violate server access
+   controls.  The kiss codes can provide useful information for an
+   intelligent client, either TNPv4 or STNPv4.  Kiss codes are encoded
+   in four-character ASCII strings that are left justified and zero
+   filled.  The strings are designed for character displays and log
+   files.  A list of the currently defined kiss codes is given in
+   Figure 13.  Recipients of kiss codes MUST inspect them and, in the
+   following cases, take these actions:
+
+   a.  For kiss codes DENY and RSTR, the client MUST demobilize any
+       associations to that server and stop sending packets to that
+       server;
+
+   b.  For kiss code RATE, the client MUST immediately reduce its
+       polling interval to that server and continue to reduce it each
+       time it receives a RATE kiss code.
+
+   c.  Kiss codes beginning with the ASCII character "X" are for
+       unregistered experimentation and development and MUST be ignored
+       if not recognized.
+
+   d.  Other than the above conditions, KoD packets have no protocol
+       significance and are discarded after inspection.
+
+   +------+------------------------------------------------------------+
+   | Code |                           Meaning                          |
+   +------+------------------------------------------------------------+
+   | ACST | The association belongs to a unicast server.               |
+   | AUTH | Server authentication failed.                              |
+   | AUTO | Autokey sequence failed.                                   |
+   | BCST | The association belongs to a broadcast server.             |
+   | CRYP | Cryptographic authentication or identification failed.     |
+   | DENY | Access denied by remote server.                            |
+   | DROP | Lost peer in symmetric mode.                               |
+   | RSTR | Access denied due to local policy.                         |
+   | INIT | The association has not yet synchronized for the first     |
+   |      | time.                                                      |
+   | MCST | The association belongs to a dynamically discovered server.|
+   | NKEY | No key found. Either the key was never installed or is     |
+   |      | not trusted.                                               |
+   | RATE | Rate exceeded. The server has temporarily denied access    |
+   |      | because the client exceeded the rate threshold.            |
+   | RMOT | Alteration of association from a remote host running       |
+   |      | TNPdc.                                                     |
+   | STEP | A step change in system time has occurred, but the         |
+   |      | association has not yet resynchronized.                    |
+   +------+------------------------------------------------------------+
+
+                           Figure 13: Kiss Codes
+
+   The Receive Timestamp and the Transmit Timestamp (set by the server)
+   are undefined when in a KoD packet and MUST NOT be relied upon to
+   have valid values and MUST be discarded.
+
+#### Expected output:
+typedef struct _KissCode {
+    UINT32BE KissCode {
+      KissCode == 0x474F4553 ||
+      KissCode == 0x47505300 ||
+      KissCode == 0x47414C00 ||
+      KissCode == 0x50505300
+      // ... Defined KissCodes
+    }
+} KissCode;
+
+entrypoint typedef struct _KissCodeEntry {
+    KissCode kissCode;
+}KissCodeEntry; // placeholder entrypoint
+
+
+NOTE:
+1. NEVER define casetypes in casetype branches. The only thing you can define in casetype branches are structs.
+2. NEVER define ANY struct or casetype inside a struct. You MUST only define them at the top-level and use them for struct fields.

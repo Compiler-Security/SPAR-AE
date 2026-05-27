@@ -1,0 +1,118 @@
+typedef struct _ExtensionField {
+    UINT16BE ExtensionType;
+    UINT16BE ExtensionLength { ExtensionLength >= 16 && ExtensionLength % 4 == 0 };
+    UINT8BE ExtensionValue[:byte-size ExtensionLength - 4];
+} ExtensionField;
+
+typedef struct _MACField {
+    UINT32BE KeyIdentifier;
+    UINT8BE Digest[16];
+} MACField;
+
+casetype _MACPresent(UINT8BE hasMac) {
+    switch(hasMac) {
+        case 0: unit Empty;
+        case 1: MACField macField;
+    }
+} MACPresent;
+
+typedef struct _AsciiRefId {
+  UINT32BE Ascii {
+          Code == 0x474F4553 ||
+          Code == 0x47505300 ||
+          Code == 0x47414C00 ||
+          Code == 0x50505300 ||
+          Code == 0x49524947 ||
+          Code == 0x57575642 ||
+          Code == 0x44434600 ||
+          Code == 0x48424700 ||
+          Code == 0x4D534600 ||
+          Code == 0x4A4A5900 ||
+          Code == 0x4C4F5243 ||
+          Code == 0x43485500 ||
+          Code == 0x57575600 ||
+          Code == 0x57575648 ||
+          Code == 0x4E495354 ||
+          Code == 0x41435453 ||
+          Code == 0x55534E4F ||
+          Code == 0x50544200
+          }; // Defined ASCII refids
+} AsciiRefId;
+
+typedef struct _KissCode {
+  UINT32BE Code {
+    // ACST
+    Code == 0x41435354 ||
+    // AUTH
+    Code == 0x41555448 ||
+    // AUTO
+    Code == 0x4155544F ||
+    // BCST
+    Code == 0x42435354 ||
+    // CRYP
+    Code == 0x43525950 ||
+    // DENY
+    Code == 0x44454E59 ||
+    // DROP
+    Code == 0x44524F50 ||
+    // RSTR
+    Code == 0x52535452 ||
+    // INIT
+    Code == 0x494E4954 ||
+    // MCST
+    Code == 0x4D435354 ||
+    // NKEY
+    Code == 0x4E4B4559 ||
+    // RATE
+    Code == 0x52415445 ||
+    // RMOT
+    Code == 0x524D4F54 ||
+    // STEP
+    Code == 0x53544550
+  };
+} KissCode;
+
+casetype _ReferenceId(UINT8BE Stratum) {
+  switch (Stratum) {
+    case 0: KissCode kissCode;
+    case 1: AsciiRefId asciiRefId;
+    case 2: struct { UINT8BE RefId[4]; } secondaryRefId;
+    case 3: struct { UINT8BE RefId[4]; } secondaryRefId3;
+    case 4: struct { UINT8BE RefId[4]; } secondaryRefId4;
+    case 5: struct { UINT8BE RefId[4]; } secondaryRefId5;
+    case 6: struct { UINT8BE RefId[4]; } secondaryRefId6;
+    case 7: struct { UINT8BE RefId[4]; } secondaryRefId7;
+    case 8: struct { UINT8BE RefId[4]; } secondaryRefId8;
+    case 9: struct { UINT8BE RefId[4]; } secondaryRefId9;
+    case 10: struct { UINT8BE RefId[4]; } secondaryRefId10;
+    case 11: struct { UINT8BE RefId[4]; } secondaryRefId11;
+    case 12: struct { UINT8BE RefId[4]; } secondaryRefId12;
+    case 13: struct { UINT8BE RefId[4]; } secondaryRefId13;
+    case 14: struct { UINT8BE RefId[4]; } secondaryRefId14;
+    case 15: struct { UINT8BE RefId[4]; } secondaryRefId15;
+    case 16: struct { UINT8BE RefId[4]; } unsyncRefId;
+  }
+} ReferenceId;
+
+entrypoint typedef struct _NTPMessage(UINT32BE TotalLength, UINT8BE hasMac) where (
+  TotalLength >= 48 && (
+    hasMac == 0 && TotalLength == 48 ||
+    hasMac == 1 && TotalLength >= 68
+  )
+) {
+    UINT8BE LI: 2;
+    UINT8BE VN: 3;
+    UINT8BE Mode: 3;
+    UINT8BE Stratum { Stratum >= 0 && Stratum <= 16 };
+    UINT8BE Poll;
+    UINT8BE Precision;
+    UINT32BE RootDelay;
+    UINT32BE RootDispersion;
+    ReferenceId(Stratum) RefId;
+    UINT64BE ReferenceTimestamp;
+    UINT64BE OriginateTimestamp;
+    UINT64BE ReceiveTimestamp;
+    UINT64BE TransmitTimestamp;
+    ExtensionField Extensions[:byte-size (TotalLength - 48)];
+    MACPresent(hasMac) MAC;
+} NTPMessage;

@@ -1,0 +1,2991 @@
+{
+    "protocol_name": "BGP-v4",
+    "root": "4",
+    "sections": {
+        "4.1": {
+            "number": "4.1",
+            "title": "Message Header Format",
+            "content": "4.1.  Message Header Format\n   Each message has a fixed-size header.  There may or may not be a data\n   portion following the header, depending on the message type.  The\n   layout of these fields is shown below:\n      0                   1                   2                   3\n      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                                                               +\n      |                                                               |\n      +                                                               +\n      |                           Marker                              |\n      +                                                               +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |          Length               |      Type     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      Marker:\n         This 16-octet field is included for compatibility; it MUST be\n         set to all ones.\n      Length:\n         This 2-octet unsigned integer indicates the total length of the\n         message, including the header in octets.  Thus, it allows one\n         to locate the (Marker field of the) next message in the TCP\n         stream.  The value of the Length field MUST always be at least\n         19 and no greater than 4096, and MAY be further constrained,\n         depending on the message type.  \"padding\" of extra data after\n         the message is not allowed.  Therefore, the Length field MUST\n         have the smallest value required, given the rest of the\n         message.\n      Type:\n         This 1-octet unsigned integer indicates the type code of the\n         message.  This document defines the following type codes:\n                              1 - OPEN\n                              2 - UPDATE\n                              3 - NOTIFICATION\n                              4 - KEEPALIVE\n         [RFC2918] defines one more type code.",
+            "summary": "This section describes the fixed-size message header format, detailing the Marker, Length, and Type fields, their purposes, value constraints, and how they enable message identification and processing.",
+            "format_path": "data/3d_syntaxs/MESSAGEHEADER_edbfcf/MESSAGEHEADER.3d",
+            "parser_path": "data/python_parser/PARSE_PACKET_MESSAGE_HEADER_0bc197/PARSE_PACKET_MESSAGE_HEADER.py"
+        },
+        "4.2": {
+            "number": "4.2",
+            "title": "OPEN Message Format",
+            "content": "4.2.  OPEN Message Format\n   After a TCP connection is established, the first message sent by each\n   side is an OPEN message.  If the OPEN message is acceptable, a\n   KEEPALIVE message confirming the OPEN is sent back.\n   In addition to the fixed-size BGP header, the OPEN message contains\n   the following fields:\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n       +-+-+-+-+-+-+-+-+\n       |    Version    |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |     My Autonomous System      |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |           Hold Time           |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |                         BGP Identifier                        |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       | Opt Parm Len  |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |                                                               |\n       |             Optional Parameters (variable)                    |\n       |                                                               |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      Version:\n         This 1-octet unsigned integer indicates the protocol version\n         number of the message.  The current BGP version number is 4.\n      My Autonomous System:\n         This 2-octet unsigned integer indicates the Autonomous System\n         number of the sender.\n      Hold Time:\n         This 2-octet unsigned integer indicates the number of seconds\n         the sender proposes for the value of the Hold Timer.  Upon\n         receipt of an OPEN message, a BGP speaker MUST calculate the\n         value of the Hold Timer by using the smaller of its configured\n         Hold Time and the Hold Time received in the OPEN message.  The\n         Hold Time MUST be either zero or at least three seconds.  An\n         implementation MAY reject connections on the basis of the Hold\n         Time.  The calculated value indicates the maximum number of\n         seconds that may elapse between the receipt of successive\n         KEEPALIVE and/or UPDATE messages from the sender.\n      BGP Identifier:\n         This 4-octet unsigned integer indicates the BGP Identifier of\n         the sender.  A given BGP speaker sets the value of its BGP\n         Identifier to an IP address that is assigned to that BGP\n         speaker.  The value of the BGP Identifier is determined upon\n         startup and is the same for every local interface and BGP peer.\n      Optional Parameters Length:\n         This 1-octet unsigned integer indicates the total length of the\n         Optional Parameters field in octets.  If the value of this\n         field is zero, no Optional Parameters are present.\n      Optional Parameters:\n         This field contains a list of optional parameters, in which\n         each parameter is encoded as a <Parameter Type, Parameter\n         Length, Parameter Value> triplet.\n         0                   1\n         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5\n         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...\n         |  Parm. Type   | Parm. Length  |  Parameter Value (variable)\n         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...\n         Parameter Type is a one octet field that unambiguously\n         identifies individual parameters.  Parameter Length is a one\n         octet field that contains the length of the Parameter Value\n         field in octets.  Parameter Value is a variable length field\n         that is interpreted according to the value of the Parameter\n         Type field.\n         [RFC3392] defines the Capabilities Optional Parameter.\n   The minimum length of the OPEN message is 29 octets (including the\n   message header).",
+            "summary": "This section describes the format and fields of the BGP OPEN message, which is the first message exchanged after establishing a TCP connection, detailing its structure, required fields, and the handling of optional parameters.",
+            "format_path": "data/3d_syntaxs/BGP_OPEN_d07368/BGP_OPEN.3d",
+            "parser_path": "data/python_parser/__MAIN___092d68/__MAIN__.py"
+        },
+        "4.3": {
+            "number": "4.3",
+            "title": "UPDATE Message Format",
+            "content": "4.3.  UPDATE Message Format\n   UPDATE messages are used to transfer routing information between BGP\n   peers.  The information in the UPDATE message can be used to\n   construct a graph that describes the relationships of the various\n   Autonomous Systems.  By applying rules to be discussed, routing\n   information loops and some other anomalies may be detected and\n   removed from inter-AS routing.\n   An UPDATE message is used to advertise feasible routes that share\n   common path attributes to a peer, or to withdraw multiple unfeasible\n   routes from service (see 3.1).  An UPDATE message MAY simultaneously\n   advertise a feasible route and withdraw multiple unfeasible routes\n   from service.  The UPDATE message always includes the fixed-size BGP\n   header, and also includes the other fields, as shown below (note,\n   some of the shown fields may not be present in every UPDATE message):\n      +-----------------------------------------------------+\n      |   Withdrawn Routes Length (2 octets)                |\n      +-----------------------------------------------------+\n      |   Withdrawn Routes (variable)                       |\n      +-----------------------------------------------------+\n      |   Total Path Attribute Length (2 octets)            |\n      +-----------------------------------------------------+\n      |   Path Attributes (variable)                        |\n      +-----------------------------------------------------+\n      |   Network Layer Reachability Information (variable) |\n      +-----------------------------------------------------+\n      Withdrawn Routes Length:\n         This 2-octets unsigned integer indicates the total length of\n         the Withdrawn Routes field in octets.  Its value allows the\n         length of the Network Layer Reachability Information field to\n         be determined, as specified below.\n         A value of 0 indicates that no routes are being withdrawn from\n         service, and that the WITHDRAWN ROUTES field is not present in\n         this UPDATE message.\n      Withdrawn Routes:\n         This is a variable-length field that contains a list of IP\n         address prefixes for the routes that are being withdrawn from\n         service.  Each IP address prefix is encoded as a 2-tuple of the\n         form <length, prefix>, whose fields are described below:\n                  +---------------------------+\n                  |   Length (1 octet)        |\n                  +---------------------------+\n                  |   Prefix (variable)       |\n                  +---------------------------+\n         The use and the meaning of these fields are as follows:\n         a) Length:\n            The Length field indicates the length in bits of the IP\n            address prefix.  A length of zero indicates a prefix that\n            matches all IP addresses (with prefix, itself, of zero\n            octets).\n         b) Prefix:\n            The Prefix field contains an IP address prefix, followed by\n            the minimum number of trailing bits needed to make the end\n            of the field fall on an octet boundary.  Note that the value\n            of trailing bits is irrelevant.\n      Total Path Attribute Length:\n         This 2-octet unsigned integer indicates the total length of the\n         Path Attributes field in octets.  Its value allows the length\n         of the Network Layer Reachability field to be determined as\n         specified below.\n         A value of 0 indicates that neither the Network Layer\n         Reachability Information field nor the Path Attribute field is\n         present in this UPDATE message.\n      Path Attributes:\n         A variable-length sequence of path attributes is present in\n         every UPDATE message, except for an UPDATE message that carries\n         only the withdrawn routes.  Each path attribute is a triple\n         <attribute type, attribute length, attribute value> of variable\n         length.\n         Attribute Type is a two-octet field that consists of the\n         Attribute Flags octet, followed by the Attribute Type Code\n         octet.\n               0                   1\n               0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5\n               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n               |  Attr. Flags  |Attr. Type Code|\n               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n         The high-order bit (bit 0) of the Attribute Flags octet is the\n         Optional bit.  It defines whether the attribute is optional (if\n         set to 1) or well-known (if set to 0).\n         The second high-order bit (bit 1) of the Attribute Flags octet\n         is the Transitive bit.  It defines whether an optional\n         attribute is transitive (if set to 1) or non-transitive (if set\n         to 0).\n         For well-known attributes, the Transitive bit MUST be set to 1.\n         (See Section 5 for a discussion of transitive attributes.)\n         The third high-order bit (bit 2) of the Attribute Flags octet\n         is the Partial bit.  It defines whether the information\n         contained in the optional transitive attribute is partial (if\n         set to 1) or complete (if set to 0).  For well-known attributes\n         and for optional non-transitive attributes, the Partial bit\n         MUST be set to 0.\n         The fourth high-order bit (bit 3) of the Attribute Flags octet\n         is the Extended Length bit.  It defines whether the Attribute\n         Length is one octet (if set to 0) or two octets (if set to 1).\n         The lower-order four bits of the Attribute Flags octet are\n         unused.  They MUST be zero when sent and MUST be ignored when\n         received.\n         The Attribute Type Code octet contains the Attribute Type Code.\n         Currently defined Attribute Type Codes are discussed in Section\n         5.\n         If the Extended Length bit of the Attribute Flags octet is set\n         to 0, the third octet of the Path Attribute contains the length\n         of the attribute data in octets.\n         If the Extended Length bit of the Attribute Flags octet is set\n         to 1, the third and fourth octets of the path attribute contain\n         the length of the attribute data in octets.\n         The remaining octets of the Path Attribute represent the\n         attribute value and are interpreted according to the Attribute\n         Flags and the Attribute Type Code.  The supported Attribute\n         Type Codes, and their attribute values and uses are as follows:\n         a) ORIGIN (Type Code 1):\n            ORIGIN is a well-known mandatory attribute that defines the\n            origin of the path information.  The data octet can assume\n            the following values:\n               Value      Meaning\n               0         IGP - Network Layer Reachability Information\n                            is interior to the originating AS\n               1         EGP - Network Layer Reachability Information\n                            learned via the EGP protocol [RFC904]\n               2         INCOMPLETE - Network Layer Reachability\n                            Information learned by some other means\n            Usage of this attribute is defined in 5.1.1.\n         b) AS_PATH (Type Code 2):\n            AS_PATH is a well-known mandatory attribute that is composed\n            of a sequence of AS path segments.  Each AS path segment is\n            represented by a triple <path segment type, path segment\n            length, path segment value>.\n            The path segment type is a 1-octet length field with the\n            following values defined:\n               Value      Segment Type\n               1         AS_SET: unordered set of ASes a route in the\n                            UPDATE message has traversed\n               2         AS_SEQUENCE: ordered set of ASes a route in\n                            the UPDATE message has traversed\n            The path segment length is a 1-octet length field,\n            containing the number of ASes (not the number of octets) in\n            the path segment value field.\n            The path segment value field contains one or more AS\n            numbers, each encoded as a 2-octet length field.\n            Usage of this attribute is defined in 5.1.2.\n         c) NEXT_HOP (Type Code 3):\n            This is a well-known mandatory attribute that defines the\n            (unicast) IP address of the router that SHOULD be used as\n            the next hop to the destinations listed in the Network Layer\n            Reachability Information field of the UPDATE message.\n            Usage of this attribute is defined in 5.1.3.\n         d) MULTI_EXIT_DISC (Type Code 4):\n            This is an optional non-transitive attribute that is a\n            four-octet unsigned integer.  The value of this attribute\n            MAY be used by a BGP speaker's Decision Process to\n            discriminate among multiple entry points to a neighboring\n            autonomous system.\n            Usage of this attribute is defined in 5.1.4.\n         e) LOCAL_PREF (Type Code 5):\n            LOCAL_PREF is a well-known attribute that is a four-octet\n            unsigned integer.  A BGP speaker uses it to inform its other\n            internal peers of the advertising speaker's degree of\n            preference for an advertised route.\n            Usage of this attribute is defined in 5.1.5.\n         f) ATOMIC_AGGREGATE (Type Code 6)\n            ATOMIC_AGGREGATE is a well-known discretionary attribute of\n            length 0.\n            Usage of this attribute is defined in 5.1.6.\n         g) AGGREGATOR (Type Code 7)\n            AGGREGATOR is an optional transitive attribute of length 6.\n            The attribute contains the last AS number that formed the\n            aggregate route (encoded as 2 octets), followed by the IP\n            address of the BGP speaker that formed the aggregate route\n            (encoded as 4 octets).  This SHOULD be the same address as\n            the one used for the BGP Identifier of the speaker.\n            Usage of this attribute is defined in 5.1.7.\n      Network Layer Reachability Information:\n         This variable length field contains a list of IP address\n         prefixes.  The length, in octets, of the Network Layer\n         Reachability Information is not encoded explicitly, but can be\n         calculated as:\n               UPDATE message Length - 23 - Total Path Attributes Length\n               - Withdrawn Routes Length\n         where UPDATE message Length is the value encoded in the fixed-\n         size BGP header, Total Path Attribute Length, and Withdrawn\n         Routes Length are the values encoded in the variable part of\n         the UPDATE message, and 23 is a combined length of the fixed-\n         size BGP header, the Total Path Attribute Length field, and the\n         Withdrawn Routes Length field.\n         Reachability information is encoded as one or more 2-tuples of\n         the form <length, prefix>, whose fields are described below:\n                  +---------------------------+\n                  |   Length (1 octet)        |\n                  +---------------------------+\n                  |   Prefix (variable)       |\n                  +---------------------------+\n         The use and the meaning of these fields are as follows:\n         a) Length:\n            The Length field indicates the length in bits of the IP\n            address prefix.  A length of zero indicates a prefix that\n            matches all IP addresses (with prefix, itself, of zero\n            octets).\n         b) Prefix:\n            The Prefix field contains an IP address prefix, followed by\n            enough trailing bits to make the end of the field fall on an\n            octet boundary.  Note that the value of the trailing bits is\n            irrelevant.\n   The minimum length of the UPDATE message is 23 octets -- 19 octets\n   for the fixed header + 2 octets for the Withdrawn Routes Length + 2\n   octets for the Total Path Attribute Length (the value of Withdrawn\n   Routes Length is 0 and the value of Total Path Attribute Length is\n   0).\n   An UPDATE message can advertise, at most, one set of path attributes,\n   but multiple destinations, provided that the destinations share these\n   attributes.  All path attributes contained in a given UPDATE message\n   apply to all destinations carried in the NLRI field of the UPDATE\n   message.\n   An UPDATE message can list multiple routes that are to be withdrawn\n   from service.  Each such route is identified by its destination\n   (expressed as an IP prefix), which unambiguously identifies the route\n   in the context of the BGP speaker - BGP speaker connection to which\n   it has been previously advertised.\n   An UPDATE message might advertise only routes that are to be\n   withdrawn from service, in which case the message will not include\n   path attributes or Network Layer Reachability Information.\n   Conversely, it may advertise only a feasible route, in which case the\n   WITHDRAWN ROUTES field need not be present.\n   An UPDATE message SHOULD NOT include the same address prefix in the\n   WITHDRAWN ROUTES and Network Layer Reachability Information fields.\n   However, a BGP speaker MUST be able to process UPDATE messages in\n   this form.  A BGP speaker SHOULD treat an UPDATE message of this form\n   as though the WITHDRAWN ROUTES do not contain the address prefix.",
+            "summary": "Section 4.3 describes the format and purpose of the BGP UPDATE message, detailing its fields for advertising new routes, withdrawing unfeasible routes, and specifying path attributes and network reachability information, as well as the structure and encoding of these fields and their attributes.",
+            "format_path": "data/3d_syntaxs/BGPUPDATE_906a20/BGPUPDATE.3d",
+            "parser_path": "data/python_parser/BGP_UPDATE_MESSAGE_bf6205/BGP_UPDATE_MESSAGE.py"
+        },
+        "4.4": {
+            "number": "4.4",
+            "title": "KEEPALIVE Message Format",
+            "content": "4.4.  KEEPALIVE Message Format\n   BGP does not use any TCP-based, keep-alive mechanism to determine if\n   peers are reachable.  Instead, KEEPALIVE messages are exchanged\n   between peers often enough not to cause the Hold Timer to expire.  A\n   reasonable maximum time between KEEPALIVE messages would be one third\n   of the Hold Time interval.  KEEPALIVE messages MUST NOT be sent more\n   frequently than one per second.  An implementation MAY adjust the\n   rate at which it sends KEEPALIVE messages as a function of the Hold\n   Time interval.\n   If the negotiated Hold Time interval is zero, then periodic KEEPALIVE\n   messages MUST NOT be sent.\n   A KEEPALIVE message consists of only the message header and has a\n   length of 19 octets.",
+            "summary": "This section describes the BGP KEEPALIVE message format and its role in maintaining peer connectivity, specifying timing requirements for sending KEEPALIVE messages and stating that the message consists only of a 19-octet header.",
+            "format_path": "data/3d_syntaxs/KEEPALIVEMESSAGE_8be7cc/KEEPALIVEMESSAGE.3d",
+            "parser_path": "data/python_parser/BGP_KEEPALIVE_PARSER_3e4003/BGP_KEEPALIVE_PARSER.py"
+        },
+        "4.5": {
+            "number": "4.5",
+            "title": "NOTIFICATION Message Format",
+            "content": "4.5.  NOTIFICATION Message Format\n   A NOTIFICATION message is sent when an error condition is detected.\n   The BGP connection is closed immediately after it is sent.\n   In addition to the fixed-size BGP header, the NOTIFICATION message\n   contains the following fields:\n      0                   1                   2                   3\n      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      | Error code    | Error subcode |   Data (variable)             |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      Error Code:\n         This 1-octet unsigned integer indicates the type of\n         NOTIFICATION.  The following Error Codes have been defined:\n            Error Code       Symbolic Name               Reference\n              1         Message Header Error             Section 6.1\n              2         OPEN Message Error               Section 6.2\n              3         UPDATE Message Error             Section 6.3\n              4         Hold Timer Expired               Section 6.5\n              5         Finite State Machine Error       Section 6.6\n              6         Cease                            Section 6.7\n      Error subcode:\n         This 1-octet unsigned integer provides more specific\n         information about the nature of the reported error.  Each Error\n         Code may have one or more Error Subcodes associated with it.\n         If no appropriate Error Subcode is defined, then a zero\n         (Unspecific) value is used for the Error Subcode field.\n      Message Header Error subcodes:\n               1 - Connection Not Synchronized.\n               2 - Bad Message Length.\n               3 - Bad Message Type.\n      OPEN Message Error subcodes:\n               1 - Unsupported Version Number.\n               2 - Bad Peer AS.\n               3 - Bad BGP Identifier.\n               4 - Unsupported Optional Parameter.\n               5 - [Deprecated - see Appendix A].\n               6 - Unacceptable Hold Time.\n      UPDATE Message Error subcodes:\n               1 - Malformed Attribute List.\n               2 - Unrecognized Well-known Attribute.\n               3 - Missing Well-known Attribute.\n               4 - Attribute Flags Error.\n               5 - Attribute Length Error.\n               6 - Invalid ORIGIN Attribute.\n               7 - [Deprecated - see Appendix A].\n               8 - Invalid NEXT_HOP Attribute.\n               9 - Optional Attribute Error.\n              10 - Invalid Network Field.\n              11 - Malformed AS_PATH.\n      Data:\n         This variable-length field is used to diagnose the reason for\n         the NOTIFICATION.  The contents of the Data field depend upon\n         the Error Code and Error Subcode.  See Section 6 for more\n         details.\n         Note that the length of the Data field can be determined from\n         the message Length field by the formula:\n                  Message Length = 21 + Data Length\n   The minimum length of the NOTIFICATION message is 21 octets\n   (including message header).",
+            "summary": "Section 4.5 describes the format and purpose of the BGP NOTIFICATION message, which is sent when an error is detected and results in immediate connection closure; it details the message fields, including error code, error subcode, and variable data for diagnostics, and references related error definitions in Section 6.",
+            "format_path": "data/3d_syntaxs/NOTIFICATIONMESSAGE_11391d/NOTIFICATIONMESSAGE.3d",
+            "parser_path": "data/python_parser/__MAIN___d9cf4d/__MAIN__.py"
+        },
+        "4": {
+            "number": "4",
+            "title": "Message Formats",
+            "content": "4.  Message Formats\n   This section describes message formats used by BGP.\n   BGP messages are sent over TCP connections.  A message is processed\n   only after it is entirely received.  The maximum message size is 4096\n   octets.  All implementations are required to support this maximum\n   message size.  The smallest message that may be sent consists of a\n   BGP header without a data portion (19 octets).\n   All multi-octet fields are in network byte order.\n4.1.  Message Header Format\n   Each message has a fixed-size header.  There may or may not be a data\n   portion following the header, depending on the message type.  The\n   layout of these fields is shown below:\n      0                   1                   2                   3\n      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      +                                                               +\n      |                                                               |\n      +                                                               +\n      |                           Marker                              |\n      +                                                               +\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |          Length               |      Type     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      Marker:\n         This 16-octet field is included for compatibility; it MUST be\n         set to all ones.\n      Length:\n         This 2-octet unsigned integer indicates the total length of the\n         message, including the header in octets.  Thus, it allows one\n         to locate the (Marker field of the) next message in the TCP\n         stream.  The value of the Length field MUST always be at least\n         19 and no greater than 4096, and MAY be further constrained,\n         depending on the message type.  \"padding\" of extra data after\n         the message is not allowed.  Therefore, the Length field MUST\n         have the smallest value required, given the rest of the\n         message.\n      Type:\n         This 1-octet unsigned integer indicates the type code of the\n         message.  This document defines the following type codes:\n                              1 - OPEN\n                              2 - UPDATE\n                              3 - NOTIFICATION\n                              4 - KEEPALIVE\n         [RFC2918] defines one more type code.\n4.2.  OPEN Message Format\n   After a TCP connection is established, the first message sent by each\n   side is an OPEN message.  If the OPEN message is acceptable, a\n   KEEPALIVE message confirming the OPEN is sent back.\n   In addition to the fixed-size BGP header, the OPEN message contains\n   the following fields:\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n       +-+-+-+-+-+-+-+-+\n       |    Version    |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |     My Autonomous System      |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |           Hold Time           |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |                         BGP Identifier                        |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       | Opt Parm Len  |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n       |                                                               |\n       |             Optional Parameters (variable)                    |\n       |                                                               |\n       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      Version:\n         This 1-octet unsigned integer indicates the protocol version\n         number of the message.  The current BGP version number is 4.\n      My Autonomous System:\n         This 2-octet unsigned integer indicates the Autonomous System\n         number of the sender.\n      Hold Time:\n         This 2-octet unsigned integer indicates the number of seconds\n         the sender proposes for the value of the Hold Timer.  Upon\n         receipt of an OPEN message, a BGP speaker MUST calculate the\n         value of the Hold Timer by using the smaller of its configured\n         Hold Time and the Hold Time received in the OPEN message.  The\n         Hold Time MUST be either zero or at least three seconds.  An\n         implementation MAY reject connections on the basis of the Hold\n         Time.  The calculated value indicates the maximum number of\n         seconds that may elapse between the receipt of successive\n         KEEPALIVE and/or UPDATE messages from the sender.\n      BGP Identifier:\n         This 4-octet unsigned integer indicates the BGP Identifier of\n         the sender.  A given BGP speaker sets the value of its BGP\n         Identifier to an IP address that is assigned to that BGP\n         speaker.  The value of the BGP Identifier is determined upon\n         startup and is the same for every local interface and BGP peer.\n      Optional Parameters Length:\n         This 1-octet unsigned integer indicates the total length of the\n         Optional Parameters field in octets.  If the value of this\n         field is zero, no Optional Parameters are present.\n      Optional Parameters:\n         This field contains a list of optional parameters, in which\n         each parameter is encoded as a <Parameter Type, Parameter\n         Length, Parameter Value> triplet.\n         0                   1\n         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5\n         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...\n         |  Parm. Type   | Parm. Length  |  Parameter Value (variable)\n         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...\n         Parameter Type is a one octet field that unambiguously\n         identifies individual parameters.  Parameter Length is a one\n         octet field that contains the length of the Parameter Value\n         field in octets.  Parameter Value is a variable length field\n         that is interpreted according to the value of the Parameter\n         Type field.\n         [RFC3392] defines the Capabilities Optional Parameter.\n   The minimum length of the OPEN message is 29 octets (including the\n   message header).\n4.3.  UPDATE Message Format\n   UPDATE messages are used to transfer routing information between BGP\n   peers.  The information in the UPDATE message can be used to\n   construct a graph that describes the relationships of the various\n   Autonomous Systems.  By applying rules to be discussed, routing\n   information loops and some other anomalies may be detected and\n   removed from inter-AS routing.\n   An UPDATE message is used to advertise feasible routes that share\n   common path attributes to a peer, or to withdraw multiple unfeasible\n   routes from service (see 3.1).  An UPDATE message MAY simultaneously\n   advertise a feasible route and withdraw multiple unfeasible routes\n   from service.  The UPDATE message always includes the fixed-size BGP\n   header, and also includes the other fields, as shown below (note,\n   some of the shown fields may not be present in every UPDATE message):\n      +-----------------------------------------------------+\n      |   Withdrawn Routes Length (2 octets)                |\n      +-----------------------------------------------------+\n      |   Withdrawn Routes (variable)                       |\n      +-----------------------------------------------------+\n      |   Total Path Attribute Length (2 octets)            |\n      +-----------------------------------------------------+\n      |   Path Attributes (variable)                        |\n      +-----------------------------------------------------+\n      |   Network Layer Reachability Information (variable) |\n      +-----------------------------------------------------+\n      Withdrawn Routes Length:\n         This 2-octets unsigned integer indicates the total length of\n         the Withdrawn Routes field in octets.  Its value allows the\n         length of the Network Layer Reachability Information field to\n         be determined, as specified below.\n         A value of 0 indicates that no routes are being withdrawn from\n         service, and that the WITHDRAWN ROUTES field is not present in\n         this UPDATE message.\n      Withdrawn Routes:\n         This is a variable-length field that contains a list of IP\n         address prefixes for the routes that are being withdrawn from\n         service.  Each IP address prefix is encoded as a 2-tuple of the\n         form <length, prefix>, whose fields are described below:\n                  +---------------------------+\n                  |   Length (1 octet)        |\n                  +---------------------------+\n                  |   Prefix (variable)       |\n                  +---------------------------+\n         The use and the meaning of these fields are as follows:\n         a) Length:\n            The Length field indicates the length in bits of the IP\n            address prefix.  A length of zero indicates a prefix that\n            matches all IP addresses (with prefix, itself, of zero\n            octets).\n         b) Prefix:\n            The Prefix field contains an IP address prefix, followed by\n            the minimum number of trailing bits needed to make the end\n            of the field fall on an octet boundary.  Note that the value\n            of trailing bits is irrelevant.\n      Total Path Attribute Length:\n         This 2-octet unsigned integer indicates the total length of the\n         Path Attributes field in octets.  Its value allows the length\n         of the Network Layer Reachability field to be determined as\n         specified below.\n         A value of 0 indicates that neither the Network Layer\n         Reachability Information field nor the Path Attribute field is\n         present in this UPDATE message.\n      Path Attributes:\n         A variable-length sequence of path attributes is present in\n         every UPDATE message, except for an UPDATE message that carries\n         only the withdrawn routes.  Each path attribute is a triple\n         <attribute type, attribute length, attribute value> of variable\n         length.\n         Attribute Type is a two-octet field that consists of the\n         Attribute Flags octet, followed by the Attribute Type Code\n         octet.\n               0                   1\n               0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5\n               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n               |  Attr. Flags  |Attr. Type Code|\n               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n         The high-order bit (bit 0) of the Attribute Flags octet is the\n         Optional bit.  It defines whether the attribute is optional (if\n         set to 1) or well-known (if set to 0).\n         The second high-order bit (bit 1) of the Attribute Flags octet\n         is the Transitive bit.  It defines whether an optional\n         attribute is transitive (if set to 1) or non-transitive (if set\n         to 0).\n         For well-known attributes, the Transitive bit MUST be set to 1.\n         (See Section 5 for a discussion of transitive attributes.)\n         The third high-order bit (bit 2) of the Attribute Flags octet\n         is the Partial bit.  It defines whether the information\n         contained in the optional transitive attribute is partial (if\n         set to 1) or complete (if set to 0).  For well-known attributes\n         and for optional non-transitive attributes, the Partial bit\n         MUST be set to 0.\n         The fourth high-order bit (bit 3) of the Attribute Flags octet\n         is the Extended Length bit.  It defines whether the Attribute\n         Length is one octet (if set to 0) or two octets (if set to 1).\n         The lower-order four bits of the Attribute Flags octet are\n         unused.  They MUST be zero when sent and MUST be ignored when\n         received.\n         The Attribute Type Code octet contains the Attribute Type Code.\n         Currently defined Attribute Type Codes are discussed in Section\n         5.\n         If the Extended Length bit of the Attribute Flags octet is set\n         to 0, the third octet of the Path Attribute contains the length\n         of the attribute data in octets.\n         If the Extended Length bit of the Attribute Flags octet is set\n         to 1, the third and fourth octets of the path attribute contain\n         the length of the attribute data in octets.\n         The remaining octets of the Path Attribute represent the\n         attribute value and are interpreted according to the Attribute\n         Flags and the Attribute Type Code.  The supported Attribute\n         Type Codes, and their attribute values and uses are as follows:\n         a) ORIGIN (Type Code 1):\n            ORIGIN is a well-known mandatory attribute that defines the\n            origin of the path information.  The data octet can assume\n            the following values:\n               Value      Meaning\n               0         IGP - Network Layer Reachability Information\n                            is interior to the originating AS\n               1         EGP - Network Layer Reachability Information\n                            learned via the EGP protocol [RFC904]\n               2         INCOMPLETE - Network Layer Reachability\n                            Information learned by some other means\n            Usage of this attribute is defined in 5.1.1.\n         b) AS_PATH (Type Code 2):\n            AS_PATH is a well-known mandatory attribute that is composed\n            of a sequence of AS path segments.  Each AS path segment is\n            represented by a triple <path segment type, path segment\n            length, path segment value>.\n            The path segment type is a 1-octet length field with the\n            following values defined:\n               Value      Segment Type\n               1         AS_SET: unordered set of ASes a route in the\n                            UPDATE message has traversed\n               2         AS_SEQUENCE: ordered set of ASes a route in\n                            the UPDATE message has traversed\n            The path segment length is a 1-octet length field,\n            containing the number of ASes (not the number of octets) in\n            the path segment value field.\n            The path segment value field contains one or more AS\n            numbers, each encoded as a 2-octet length field.\n            Usage of this attribute is defined in 5.1.2.\n         c) NEXT_HOP (Type Code 3):\n            This is a well-known mandatory attribute that defines the\n            (unicast) IP address of the router that SHOULD be used as\n            the next hop to the destinations listed in the Network Layer\n            Reachability Information field of the UPDATE message.\n            Usage of this attribute is defined in 5.1.3.\n         d) MULTI_EXIT_DISC (Type Code 4):\n            This is an optional non-transitive attribute that is a\n            four-octet unsigned integer.  The value of this attribute\n            MAY be used by a BGP speaker's Decision Process to\n            discriminate among multiple entry points to a neighboring\n            autonomous system.\n            Usage of this attribute is defined in 5.1.4.\n         e) LOCAL_PREF (Type Code 5):\n            LOCAL_PREF is a well-known attribute that is a four-octet\n            unsigned integer.  A BGP speaker uses it to inform its other\n            internal peers of the advertising speaker's degree of\n            preference for an advertised route.\n            Usage of this attribute is defined in 5.1.5.\n         f) ATOMIC_AGGREGATE (Type Code 6)\n            ATOMIC_AGGREGATE is a well-known discretionary attribute of\n            length 0.\n            Usage of this attribute is defined in 5.1.6.\n         g) AGGREGATOR (Type Code 7)\n            AGGREGATOR is an optional transitive attribute of length 6.\n            The attribute contains the last AS number that formed the\n            aggregate route (encoded as 2 octets), followed by the IP\n            address of the BGP speaker that formed the aggregate route\n            (encoded as 4 octets).  This SHOULD be the same address as\n            the one used for the BGP Identifier of the speaker.\n            Usage of this attribute is defined in 5.1.7.\n      Network Layer Reachability Information:\n         This variable length field contains a list of IP address\n         prefixes.  The length, in octets, of the Network Layer\n         Reachability Information is not encoded explicitly, but can be\n         calculated as:\n               UPDATE message Length - 23 - Total Path Attributes Length\n               - Withdrawn Routes Length\n         where UPDATE message Length is the value encoded in the fixed-\n         size BGP header, Total Path Attribute Length, and Withdrawn\n         Routes Length are the values encoded in the variable part of\n         the UPDATE message, and 23 is a combined length of the fixed-\n         size BGP header, the Total Path Attribute Length field, and the\n         Withdrawn Routes Length field.\n         Reachability information is encoded as one or more 2-tuples of\n         the form <length, prefix>, whose fields are described below:\n                  +---------------------------+\n                  |   Length (1 octet)        |\n                  +---------------------------+\n                  |   Prefix (variable)       |\n                  +---------------------------+\n         The use and the meaning of these fields are as follows:\n         a) Length:\n            The Length field indicates the length in bits of the IP\n            address prefix.  A length of zero indicates a prefix that\n            matches all IP addresses (with prefix, itself, of zero\n            octets).\n         b) Prefix:\n            The Prefix field contains an IP address prefix, followed by\n            enough trailing bits to make the end of the field fall on an\n            octet boundary.  Note that the value of the trailing bits is\n            irrelevant.\n   The minimum length of the UPDATE message is 23 octets -- 19 octets\n   for the fixed header + 2 octets for the Withdrawn Routes Length + 2\n   octets for the Total Path Attribute Length (the value of Withdrawn\n   Routes Length is 0 and the value of Total Path Attribute Length is\n   0).\n   An UPDATE message can advertise, at most, one set of path attributes,\n   but multiple destinations, provided that the destinations share these\n   attributes.  All path attributes contained in a given UPDATE message\n   apply to all destinations carried in the NLRI field of the UPDATE\n   message.\n   An UPDATE message can list multiple routes that are to be withdrawn\n   from service.  Each such route is identified by its destination\n   (expressed as an IP prefix), which unambiguously identifies the route\n   in the context of the BGP speaker - BGP speaker connection to which\n   it has been previously advertised.\n   An UPDATE message might advertise only routes that are to be\n   withdrawn from service, in which case the message will not include\n   path attributes or Network Layer Reachability Information.\n   Conversely, it may advertise only a feasible route, in which case the\n   WITHDRAWN ROUTES field need not be present.\n   An UPDATE message SHOULD NOT include the same address prefix in the\n   WITHDRAWN ROUTES and Network Layer Reachability Information fields.\n   However, a BGP speaker MUST be able to process UPDATE messages in\n   this form.  A BGP speaker SHOULD treat an UPDATE message of this form\n   as though the WITHDRAWN ROUTES do not contain the address prefix.\n4.4.  KEEPALIVE Message Format\n   BGP does not use any TCP-based, keep-alive mechanism to determine if\n   peers are reachable.  Instead, KEEPALIVE messages are exchanged\n   between peers often enough not to cause the Hold Timer to expire.  A\n   reasonable maximum time between KEEPALIVE messages would be one third\n   of the Hold Time interval.  KEEPALIVE messages MUST NOT be sent more\n   frequently than one per second.  An implementation MAY adjust the\n   rate at which it sends KEEPALIVE messages as a function of the Hold\n   Time interval.\n   If the negotiated Hold Time interval is zero, then periodic KEEPALIVE\n   messages MUST NOT be sent.\n   A KEEPALIVE message consists of only the message header and has a\n   length of 19 octets.\n4.5.  NOTIFICATION Message Format\n   A NOTIFICATION message is sent when an error condition is detected.\n   The BGP connection is closed immediately after it is sent.\n   In addition to the fixed-size BGP header, the NOTIFICATION message\n   contains the following fields:\n      0                   1                   2                   3\n      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      | Error code    | Error subcode |   Data (variable)             |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      Error Code:\n         This 1-octet unsigned integer indicates the type of\n         NOTIFICATION.  The following Error Codes have been defined:\n            Error Code       Symbolic Name               Reference\n              1         Message Header Error             Section 6.1\n              2         OPEN Message Error               Section 6.2\n              3         UPDATE Message Error             Section 6.3\n              4         Hold Timer Expired               Section 6.5\n              5         Finite State Machine Error       Section 6.6\n              6         Cease                            Section 6.7\n      Error subcode:\n         This 1-octet unsigned integer provides more specific\n         information about the nature of the reported error.  Each Error\n         Code may have one or more Error Subcodes associated with it.\n         If no appropriate Error Subcode is defined, then a zero\n         (Unspecific) value is used for the Error Subcode field.\n      Message Header Error subcodes:\n               1 - Connection Not Synchronized.\n               2 - Bad Message Length.\n               3 - Bad Message Type.\n      OPEN Message Error subcodes:\n               1 - Unsupported Version Number.\n               2 - Bad Peer AS.\n               3 - Bad BGP Identifier.\n               4 - Unsupported Optional Parameter.\n               5 - [Deprecated - see Appendix A].\n               6 - Unacceptable Hold Time.\n      UPDATE Message Error subcodes:\n               1 - Malformed Attribute List.\n               2 - Unrecognized Well-known Attribute.\n               3 - Missing Well-known Attribute.\n               4 - Attribute Flags Error.\n               5 - Attribute Length Error.\n               6 - Invalid ORIGIN Attribute.\n               7 - [Deprecated - see Appendix A].\n               8 - Invalid NEXT_HOP Attribute.\n               9 - Optional Attribute Error.\n              10 - Invalid Network Field.\n              11 - Malformed AS_PATH.\n      Data:\n         This variable-length field is used to diagnose the reason for\n         the NOTIFICATION.  The contents of the Data field depend upon\n         the Error Code and Error Subcode.  See Section 6 for more\n         details.\n         Note that the length of the Data field can be determined from\n         the message Length field by the formula:\n                  Message Length = 21 + Data Length\n   The minimum length of the NOTIFICATION message is 21 octets\n   (including message header).",
+            "summary": "This section outlines the format and transmission requirements for BGP messages, specifying their use over TCP, the maximum and minimum message sizes, and the use of network byte order for multi-octet fields. This section describes the fixed-size message header format, detailing the Marker, Length, and Type fields, their purposes, value constraints, and how they enable message identification and processing. This section describes the format and fields of the BGP OPEN message, which is the first message exchanged after establishing a TCP connection, detailing its structure, required fields, and the handling of optional parameters. Section 4.3 describes the format and purpose of the BGP UPDATE message, detailing its fields for advertising new routes, withdrawing unfeasible routes, and specifying path attributes and network reachability information, as well as the structure and encoding of these fields and their attributes. This section describes the BGP KEEPALIVE message format and its role in maintaining peer connectivity, specifying timing requirements for sending KEEPALIVE messages and stating that the message consists only of a 19-octet header. Section 4.5 describes the format and purpose of the BGP NOTIFICATION message, which is sent when an error is detected and results in immediate connection closure; it details the message fields, including error code, error subcode, and variable data for diagnostics, and references related error definitions in Section 6.",
+            "format_path": "data/3d_syntaxs/BGP_752d25/BGP.3d",
+            "parser_path": "data/python_parser/__MAIN___46dd9d/__MAIN__.py"
+        }
+    },
+    "parent_of": {
+        "4.1": "4",
+        "4.2": "4",
+        "4.3": "4",
+        "4.4": "4",
+        "4.5": "4"
+    },
+    "children_of": {
+        "4": [
+            "4.1",
+            "4.2",
+            "4.3",
+            "4.4",
+            "4.5"
+        ]
+    },
+    "name_to_section_3d": {
+        "Marker": {
+            "4": [
+                [
+                    6,
+                    16
+                ],
+                [
+                    6,
+                    16
+                ],
+                [
+                    12,
+                    3
+                ],
+                [
+                    7,
+                    16
+                ],
+                [
+                    7,
+                    16
+                ],
+                [
+                    13,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    6,
+                    16
+                ],
+                [
+                    6,
+                    16
+                ],
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    7,
+                    16
+                ],
+                [
+                    7,
+                    16
+                ],
+                [
+                    13,
+                    3
+                ]
+            ]
+        },
+        "first": {
+            "4": [
+                [
+                    7,
+                    3
+                ],
+                [
+                    8,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    7,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    8,
+                    3
+                ]
+            ]
+        },
+        "second": {
+            "4": [
+                [
+                    8,
+                    3
+                ],
+                [
+                    9,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    8,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    9,
+                    3
+                ]
+            ]
+        },
+        "MessageHeader": {
+            "4": [
+                [
+                    11,
+                    27
+                ],
+                [
+                    11,
+                    27
+                ]
+            ],
+            "4.1": [
+                [
+                    11,
+                    27
+                ],
+                [
+                    11,
+                    27
+                ]
+            ]
+        },
+        "marker": {
+            "4": [
+                [
+                    12,
+                    3
+                ],
+                [
+                    13,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    13,
+                    3
+                ]
+            ]
+        },
+        "Length": {
+            "4": [
+                [
+                    13,
+                    3
+                ],
+                [
+                    6,
+                    3
+                ],
+                [
+                    18,
+                    56
+                ],
+                [
+                    45,
+                    48
+                ],
+                [
+                    75,
+                    7
+                ],
+                [
+                    76,
+                    36
+                ],
+                [
+                    79,
+                    7
+                ],
+                [
+                    80,
+                    44
+                ],
+                [
+                    14,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    13,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    6,
+                    3
+                ],
+                [
+                    18,
+                    56
+                ],
+                [
+                    45,
+                    48
+                ],
+                [
+                    75,
+                    7
+                ],
+                [
+                    76,
+                    36
+                ],
+                [
+                    79,
+                    7
+                ],
+                [
+                    80,
+                    44
+                ]
+            ],
+            "4.4": [
+                [
+                    14,
+                    3
+                ]
+            ]
+        },
+        "Type": {
+            "4": [
+                [
+                    14,
+                    3
+                ],
+                [
+                    15,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    14,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    15,
+                    3
+                ]
+            ]
+        },
+        "OptionalParameter": {
+            "4": [
+                [
+                    4,
+                    16
+                ],
+                [
+                    4,
+                    16
+                ],
+                [
+                    16,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    4,
+                    16
+                ],
+                [
+                    4,
+                    16
+                ],
+                [
+                    16,
+                    3
+                ]
+            ]
+        },
+        "ParameterType": {
+            "4": [
+                [
+                    5,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    5,
+                    3
+                ]
+            ]
+        },
+        "ParameterLength": {
+            "4": [
+                [
+                    6,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    6,
+                    3
+                ]
+            ]
+        },
+        "ParameterValue": {
+            "4": [
+                [
+                    7,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    7,
+                    3
+                ]
+            ]
+        },
+        "OpenMessage": {
+            "4": [
+                [
+                    10,
+                    27
+                ],
+                [
+                    10,
+                    27
+                ]
+            ],
+            "4.2": [
+                [
+                    10,
+                    27
+                ],
+                [
+                    10,
+                    27
+                ]
+            ]
+        },
+        "Version": {
+            "4": [
+                [
+                    11,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    11,
+                    3
+                ]
+            ]
+        },
+        "MyAutonomousSystem": {
+            "4": [
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    12,
+                    3
+                ]
+            ]
+        },
+        "HoldTime": {
+            "4": [
+                [
+                    13,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    13,
+                    3
+                ]
+            ]
+        },
+        "BGPIdentifier": {
+            "4": [
+                [
+                    14,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    14,
+                    3
+                ]
+            ]
+        },
+        "OptionalParametersLength": {
+            "4": [
+                [
+                    15,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    15,
+                    3
+                ]
+            ]
+        },
+        "OptionalParameters": {
+            "4": [
+                [
+                    16,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    16,
+                    3
+                ]
+            ]
+        },
+        "Prefix": {
+            "4": [
+                [
+                    5,
+                    16
+                ],
+                [
+                    5,
+                    16
+                ],
+                [
+                    7,
+                    3
+                ],
+                [
+                    100,
+                    3
+                ],
+                [
+                    109,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    5,
+                    16
+                ],
+                [
+                    5,
+                    16
+                ],
+                [
+                    7,
+                    3
+                ],
+                [
+                    100,
+                    3
+                ],
+                [
+                    109,
+                    3
+                ]
+            ]
+        },
+        "ASPathSegment": {
+            "4": [
+                [
+                    11,
+                    16
+                ],
+                [
+                    11,
+                    16
+                ],
+                [
+                    24,
+                    7
+                ],
+                [
+                    51,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    11,
+                    16
+                ],
+                [
+                    11,
+                    16
+                ],
+                [
+                    24,
+                    7
+                ],
+                [
+                    51,
+                    7
+                ]
+            ]
+        },
+        "SegmentType": {
+            "4": [
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    12,
+                    3
+                ]
+            ]
+        },
+        "SegmentLength": {
+            "4": [
+                [
+                    13,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    13,
+                    3
+                ]
+            ]
+        },
+        "SegmentValue": {
+            "4": [
+                [
+                    14,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    14,
+                    3
+                ]
+            ]
+        },
+        "_PathAttributeValueExtended": {
+            "4": [
+                [
+                    18,
+                    10
+                ],
+                [
+                    18,
+                    10
+                ]
+            ],
+            "4.3": [
+                [
+                    18,
+                    10
+                ],
+                [
+                    18,
+                    10
+                ]
+            ]
+        },
+        "TypeCode": {
+            "4": [
+                [
+                    19,
+                    10
+                ],
+                [
+                    18,
+                    38
+                ],
+                [
+                    46,
+                    10
+                ],
+                [
+                    45,
+                    30
+                ],
+                [
+                    72,
+                    53
+                ],
+                [
+                    76,
+                    26
+                ],
+                [
+                    80,
+                    34
+                ],
+                [
+                    93,
+                    3
+                ],
+                [
+                    94,
+                    37
+                ]
+            ],
+            "4.3": [
+                [
+                    19,
+                    10
+                ],
+                [
+                    18,
+                    38
+                ],
+                [
+                    46,
+                    10
+                ],
+                [
+                    45,
+                    30
+                ],
+                [
+                    72,
+                    53
+                ],
+                [
+                    76,
+                    26
+                ],
+                [
+                    80,
+                    34
+                ],
+                [
+                    93,
+                    3
+                ],
+                [
+                    94,
+                    37
+                ]
+            ]
+        },
+        "OriginAttr": {
+            "4": [
+                [
+                    20,
+                    20
+                ],
+                [
+                    47,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    20,
+                    20
+                ],
+                [
+                    47,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-e34a>": {
+            "4": [
+                [
+                    20,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    20,
+                    20
+                ]
+            ]
+        },
+        "Origin": {
+            "4": [
+                [
+                    21,
+                    7
+                ],
+                [
+                    48,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    21,
+                    7
+                ],
+                [
+                    48,
+                    7
+                ]
+            ]
+        },
+        "ASPathAttr": {
+            "4": [
+                [
+                    23,
+                    20
+                ],
+                [
+                    50,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    23,
+                    20
+                ],
+                [
+                    50,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-5873>": {
+            "4": [
+                [
+                    23,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    23,
+                    20
+                ]
+            ]
+        },
+        "Segments": {
+            "4": [
+                [
+                    24,
+                    7
+                ],
+                [
+                    51,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    24,
+                    7
+                ],
+                [
+                    51,
+                    7
+                ]
+            ]
+        },
+        "NextHopAttr": {
+            "4": [
+                [
+                    26,
+                    20
+                ],
+                [
+                    53,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    26,
+                    20
+                ],
+                [
+                    53,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-7543>": {
+            "4": [
+                [
+                    26,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    26,
+                    20
+                ]
+            ]
+        },
+        "NextHop": {
+            "4": [
+                [
+                    27,
+                    7
+                ],
+                [
+                    54,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    27,
+                    7
+                ],
+                [
+                    54,
+                    7
+                ]
+            ]
+        },
+        "MultiExitDiscAttr": {
+            "4": [
+                [
+                    29,
+                    20
+                ],
+                [
+                    56,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    29,
+                    20
+                ],
+                [
+                    56,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-c66c>": {
+            "4": [
+                [
+                    29,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    29,
+                    20
+                ]
+            ]
+        },
+        "MultiExitDisc": {
+            "4": [
+                [
+                    30,
+                    7
+                ],
+                [
+                    57,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    30,
+                    7
+                ],
+                [
+                    57,
+                    7
+                ]
+            ]
+        },
+        "LocalPrefAttr": {
+            "4": [
+                [
+                    32,
+                    20
+                ],
+                [
+                    59,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    32,
+                    20
+                ],
+                [
+                    59,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-1560>": {
+            "4": [
+                [
+                    32,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    32,
+                    20
+                ]
+            ]
+        },
+        "LocalPref": {
+            "4": [
+                [
+                    33,
+                    7
+                ],
+                [
+                    60,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    33,
+                    7
+                ],
+                [
+                    60,
+                    7
+                ]
+            ]
+        },
+        "AtomicAggregateAttr": {
+            "4": [
+                [
+                    35,
+                    20
+                ],
+                [
+                    62,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    35,
+                    20
+                ],
+                [
+                    62,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-889a>": {
+            "4": [
+                [
+                    35,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    35,
+                    20
+                ]
+            ]
+        },
+        "Empty": {
+            "4": [
+                [
+                    36,
+                    7
+                ],
+                [
+                    63,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    36,
+                    7
+                ],
+                [
+                    63,
+                    7
+                ]
+            ]
+        },
+        "AggregatorAttr": {
+            "4": [
+                [
+                    38,
+                    20
+                ],
+                [
+                    65,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    38,
+                    20
+                ],
+                [
+                    65,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-542b>": {
+            "4": [
+                [
+                    38,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    38,
+                    20
+                ]
+            ]
+        },
+        "ASNumber": {
+            "4": [
+                [
+                    39,
+                    7
+                ],
+                [
+                    66,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    39,
+                    7
+                ],
+                [
+                    66,
+                    7
+                ]
+            ]
+        },
+        "BGPSpeakerID": {
+            "4": [
+                [
+                    40,
+                    7
+                ],
+                [
+                    67,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    40,
+                    7
+                ],
+                [
+                    67,
+                    7
+                ]
+            ]
+        },
+        "_PathAttributeValue": {
+            "4": [
+                [
+                    45,
+                    10
+                ],
+                [
+                    45,
+                    10
+                ]
+            ],
+            "4.3": [
+                [
+                    45,
+                    10
+                ],
+                [
+                    45,
+                    10
+                ]
+            ]
+        },
+        "<anoymous-dc87>": {
+            "4": [
+                [
+                    47,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    47,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-fd9c>": {
+            "4": [
+                [
+                    50,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    50,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-b00f>": {
+            "4": [
+                [
+                    53,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    53,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-bc76>": {
+            "4": [
+                [
+                    56,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    56,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-81ea>": {
+            "4": [
+                [
+                    59,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    59,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-bcd0>": {
+            "4": [
+                [
+                    62,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    62,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-6787>": {
+            "4": [
+                [
+                    65,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    65,
+                    20
+                ]
+            ]
+        },
+        "_PathAttributeBody": {
+            "4": [
+                [
+                    72,
+                    10
+                ],
+                [
+                    72,
+                    10
+                ]
+            ],
+            "4.3": [
+                [
+                    72,
+                    10
+                ],
+                [
+                    72,
+                    10
+                ]
+            ]
+        },
+        "ExtendedLength": {
+            "4": [
+                [
+                    73,
+                    10
+                ],
+                [
+                    72,
+                    29
+                ],
+                [
+                    91,
+                    3
+                ],
+                [
+                    94,
+                    21
+                ]
+            ],
+            "4.3": [
+                [
+                    73,
+                    10
+                ],
+                [
+                    72,
+                    29
+                ],
+                [
+                    91,
+                    3
+                ],
+                [
+                    94,
+                    21
+                ]
+            ]
+        },
+        "ShortLengthAttr": {
+            "4": [
+                [
+                    74,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    74,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-0b82>": {
+            "4": [
+                [
+                    74,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    74,
+                    20
+                ]
+            ]
+        },
+        "Value": {
+            "4": [
+                [
+                    76,
+                    7
+                ],
+                [
+                    80,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    76,
+                    7
+                ],
+                [
+                    80,
+                    7
+                ]
+            ]
+        },
+        "PathAttributeValue": {
+            "4": [
+                [
+                    76,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    76,
+                    7
+                ]
+            ]
+        },
+        "LongLengthAttr": {
+            "4": [
+                [
+                    78,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    78,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-f919>": {
+            "4": [
+                [
+                    78,
+                    20
+                ]
+            ],
+            "4.3": [
+                [
+                    78,
+                    20
+                ]
+            ]
+        },
+        "PathAttributeValueExtended": {
+            "4": [
+                [
+                    80,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    80,
+                    7
+                ]
+            ]
+        },
+        "PathAttribute": {
+            "4": [
+                [
+                    87,
+                    16
+                ],
+                [
+                    87,
+                    16
+                ],
+                [
+                    111,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    87,
+                    16
+                ],
+                [
+                    87,
+                    16
+                ],
+                [
+                    111,
+                    3
+                ]
+            ]
+        },
+        "Optional": {
+            "4": [
+                [
+                    88,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    88,
+                    3
+                ]
+            ]
+        },
+        "Transitive": {
+            "4": [
+                [
+                    89,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    89,
+                    3
+                ]
+            ]
+        },
+        "Partial": {
+            "4": [
+                [
+                    90,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    90,
+                    3
+                ]
+            ]
+        },
+        "Unused": {
+            "4": [
+                [
+                    92,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    92,
+                    3
+                ]
+            ]
+        },
+        "Body": {
+            "4": [
+                [
+                    94,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    94,
+                    3
+                ]
+            ]
+        },
+        "PathAttributeBody": {
+            "4": [
+                [
+                    94,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    94,
+                    3
+                ]
+            ]
+        },
+        "NLRI": {
+            "4": [
+                [
+                    99,
+                    16
+                ],
+                [
+                    99,
+                    16
+                ],
+                [
+                    100,
+                    3
+                ],
+                [
+                    112,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    99,
+                    16
+                ],
+                [
+                    99,
+                    16
+                ],
+                [
+                    100,
+                    3
+                ],
+                [
+                    112,
+                    3
+                ]
+            ]
+        },
+        "UpdateMessage": {
+            "4": [
+                [
+                    105,
+                    27
+                ],
+                [
+                    105,
+                    27
+                ]
+            ],
+            "4.3": [
+                [
+                    105,
+                    27
+                ],
+                [
+                    105,
+                    27
+                ]
+            ]
+        },
+        "WithdrawnRoutesLength": {
+            "4": [
+                [
+                    108,
+                    3
+                ],
+                [
+                    112,
+                    52
+                ]
+            ],
+            "4.3": [
+                [
+                    108,
+                    3
+                ],
+                [
+                    112,
+                    52
+                ]
+            ]
+        },
+        "WithdrawnRoutes": {
+            "4": [
+                [
+                    109,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    109,
+                    3
+                ]
+            ]
+        },
+        "PathAttributesLength": {
+            "4": [
+                [
+                    110,
+                    3
+                ],
+                [
+                    112,
+                    29
+                ]
+            ],
+            "4.3": [
+                [
+                    110,
+                    3
+                ],
+                [
+                    112,
+                    29
+                ]
+            ]
+        },
+        "PathAttributes": {
+            "4": [
+                [
+                    111,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    111,
+                    3
+                ]
+            ]
+        },
+        "nlri": {
+            "4": [
+                [
+                    112,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    112,
+                    3
+                ]
+            ]
+        },
+        "MessageLength": {
+            "4": [
+                [
+                    112,
+                    8
+                ]
+            ],
+            "4.3": [
+                [
+                    112,
+                    8
+                ]
+            ]
+        },
+        "KeepaliveMessage": {
+            "4": [
+                [
+                    12,
+                    27
+                ],
+                [
+                    12,
+                    27
+                ]
+            ],
+            "4.4": [
+                [
+                    12,
+                    27
+                ],
+                [
+                    12,
+                    27
+                ]
+            ]
+        },
+        "_ErrorSubcode": {
+            "4": [
+                [
+                    22,
+                    10
+                ],
+                [
+                    22,
+                    10
+                ]
+            ],
+            "4.5": [
+                [
+                    22,
+                    10
+                ],
+                [
+                    22,
+                    10
+                ]
+            ]
+        },
+        "ErrorCode": {
+            "4": [
+                [
+                    23,
+                    10
+                ],
+                [
+                    22,
+                    24
+                ],
+                [
+                    47,
+                    3
+                ],
+                [
+                    48,
+                    16
+                ]
+            ],
+            "4.5": [
+                [
+                    23,
+                    10
+                ],
+                [
+                    22,
+                    24
+                ],
+                [
+                    47,
+                    3
+                ],
+                [
+                    48,
+                    16
+                ]
+            ]
+        },
+        "MessageHeaderErrorSubcode": {
+            "4": [
+                [
+                    24,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    24,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-9f1d>": {
+            "4": [
+                [
+                    24,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    24,
+                    20
+                ]
+            ]
+        },
+        "ErrorSubcode": {
+            "4": [
+                [
+                    25,
+                    7
+                ],
+                [
+                    28,
+                    7
+                ],
+                [
+                    31,
+                    7
+                ],
+                [
+                    34,
+                    7
+                ],
+                [
+                    37,
+                    7
+                ],
+                [
+                    40,
+                    7
+                ],
+                [
+                    48,
+                    3
+                ]
+            ],
+            "4.5": [
+                [
+                    25,
+                    7
+                ],
+                [
+                    28,
+                    7
+                ],
+                [
+                    31,
+                    7
+                ],
+                [
+                    34,
+                    7
+                ],
+                [
+                    37,
+                    7
+                ],
+                [
+                    40,
+                    7
+                ],
+                [
+                    48,
+                    3
+                ]
+            ]
+        },
+        "OpenMessageErrorSubcode": {
+            "4": [
+                [
+                    27,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    27,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-8a2f>": {
+            "4": [
+                [
+                    27,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    27,
+                    20
+                ]
+            ]
+        },
+        "UpdateMessageErrorSubcode": {
+            "4": [
+                [
+                    30,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    30,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-47e1>": {
+            "4": [
+                [
+                    30,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    30,
+                    20
+                ]
+            ]
+        },
+        "HoldTimerExpiredSubcode": {
+            "4": [
+                [
+                    33,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    33,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-c1ec>": {
+            "4": [
+                [
+                    33,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    33,
+                    20
+                ]
+            ]
+        },
+        "FiniteStateMachineErrorSubcode": {
+            "4": [
+                [
+                    36,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    36,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-39a4>": {
+            "4": [
+                [
+                    36,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    36,
+                    20
+                ]
+            ]
+        },
+        "CeaseSubcode": {
+            "4": [
+                [
+                    39,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    39,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-a079>": {
+            "4": [
+                [
+                    39,
+                    20
+                ]
+            ],
+            "4.5": [
+                [
+                    39,
+                    20
+                ]
+            ]
+        },
+        "NotificationMessage": {
+            "4": [
+                [
+                    46,
+                    27
+                ],
+                [
+                    46,
+                    27
+                ]
+            ],
+            "4.5": [
+                [
+                    46,
+                    27
+                ],
+                [
+                    46,
+                    27
+                ]
+            ]
+        },
+        "Subcode": {
+            "4": [
+                [
+                    48,
+                    3
+                ]
+            ],
+            "4.5": [
+                [
+                    48,
+                    3
+                ]
+            ]
+        },
+        "Data": {
+            "4": [
+                [
+                    49,
+                    3
+                ]
+            ],
+            "4.5": [
+                [
+                    49,
+                    3
+                ]
+            ]
+        }
+    },
+    "name_to_section_py": {
+        "version:68": "4",
+        "result:337": "4",
+        "nlri_offset:222": "4",
+        "withdrawn_routes_data:162": "4",
+        "attr_len:207": "4",
+        "my_autonomous_system:69": "4",
+        "error_code:323": "4",
+        "idx:219": "4",
+        "parse_packet_bgp_update_message:137": "4",
+        "bgp_identifier:71": "4",
+        "current_result:125": "4",
+        "prefix_bytes:169": "4",
+        "current_result:305": "4",
+        "param_value:101": "4",
+        "param_length:98": "4",
+        "next_idx:203": "4",
+        "remaining_input:49": "4",
+        "length:25": "4",
+        "remaining_bytes:45": "4",
+        "ext_len:197": "4",
+        "result:37": "4",
+        "opt_param_len:72": "4",
+        "optional_parameters:91": "4",
+        "attr_value_offset:208": "4",
+        "prefix:235": "4",
+        "type_code:32": "4",
+        "main:348": "4",
+        "idx:163": "4",
+        "idx:191": "4",
+        "prefix_length:230": "4",
+        "path_attr_offset:187": "4",
+        "marker:274": "4",
+        "path_attributes_data:190": "4",
+        "data:355": "4",
+        "param_type:97": "4",
+        "attr_flags:195": "4",
+        "attr_type_code:196": "4",
+        "parse_packet_message_header:1": "4",
+        "remaining_input:125": "4",
+        "remaining_input:1": "4",
+        "error_subcode:324": "4",
+        "prefix_bytes:232": "4",
+        "withdrawn_routes_length:156": "4",
+        "attr_value_offset:202": "4",
+        "marker:20": "4",
+        "msg_type:276": "4",
+        "parse_packet_notification_message:305": "4",
+        "remaining_bytes:326": "4",
+        "remaining_input:305": "4",
+        "withdrawn_routes:161": "4",
+        "prefix:172": "4",
+        "hold_time:70": "4",
+        "prefix_start:227": "4",
+        "parse_packet_bgp_keepalive_message:255": "4",
+        "remaining_bytes:112": "4",
+        "nlri_data:223": "4",
+        "remaining_bytes:252": "4",
+        "next_idx:209": "4",
+        "remaining_input:255": "4",
+        "prefix_length:167": "4",
+        "remaining_bytes:301": "4",
+        "tpal_offset:180": "4",
+        "attr_value:212": "4",
+        "opt_params_offset:93": "4",
+        "result:291": "4",
+        "length:275": "4",
+        "opt_params_bytes:92": "4",
+        "nlri:224": "4",
+        "idx:225": "4",
+        "result:114": "4",
+        "parse_packet_bgp_optional_parameter:125": "4",
+        "current_result:255": "4",
+        "current_result:137": "4",
+        "remaining_input:137": "4",
+        "current_result:1": "4",
+        "path_attributes:186": "4",
+        "parse_packet_bgp_open_message:49": "4",
+        "current_result:49": "4",
+        "total_path_attribute_length:183": "4",
+        "result:243": "4",
+        "data:325": "4",
+        "attr_len:201": "4",
+        "main:50": "4.1",
+        "data:54": "4.1",
+        "result:66": "4.2",
+        "my_autonomous_system:21": "4.2",
+        "version:20": "4.2",
+        "param_value:53": "4.2",
+        "optional_parameters:43": "4.2",
+        "open_body:103": "4.2",
+        "bgp_identifier:23": "4.2",
+        "parse_packet_bgp_open_message:1": "4.2",
+        "param_length:50": "4.2",
+        "opt_params_bytes:44": "4.2",
+        "current_result:78": "4.2",
+        "hold_time:22": "4.2",
+        "remaining_bytes:64": "4.2",
+        "opt_params_offset:45": "4.2",
+        "param_type:49": "4.2",
+        "opt_param_len:24": "4.2",
+        "parse_packet_bgp_optional_parameter:78": "4.2",
+        "remaining_input:78": "4.2",
+        "main:91": "4.2",
+        "data:98": "4.2",
+        "prefix_length:31": "4.3",
+        "attr_type_code:60": "4.3",
+        "path_attributes_data:54": "4.3",
+        "attr_value_offset:66": "4.3",
+        "idx:83": "4.3",
+        "ext_len:61": "4.3",
+        "withdrawn_routes_length:20": "4.3",
+        "withdrawn_routes_data:26": "4.3",
+        "total_path_attribute_length:47": "4.3",
+        "idx:89": "4.3",
+        "remaining_bytes:116": "4.3",
+        "attr_value:76": "4.3",
+        "idx:55": "4.3",
+        "next_idx:73": "4.3",
+        "parse_packet_bgp_update_message:1": "4.3",
+        "nlri:88": "4.3",
+        "prefix:36": "4.3",
+        "tpal_offset:44": "4.3",
+        "main:119": "4.3",
+        "attr_flags:59": "4.3",
+        "data:123": "4.3",
+        "result:107": "4.3",
+        "withdrawn_routes:25": "4.3",
+        "path_attributes:50": "4.3",
+        "path_attr_offset:51": "4.3",
+        "idx:27": "4.3",
+        "attr_len:65": "4.3",
+        "prefix_start:91": "4.3",
+        "prefix_bytes:96": "4.3",
+        "prefix:99": "4.3",
+        "nlri_offset:86": "4.3",
+        "attr_len:71": "4.3",
+        "next_idx:67": "4.3",
+        "attr_value_offset:72": "4.3",
+        "nlri_data:87": "4.3",
+        "prefix_length:94": "4.3",
+        "prefix_bytes:33": "4.3",
+        "remaining_bytes:47": "4.4",
+        "length:21": "4.4",
+        "parse_packet_bgp_keepalive_message:1": "4.4",
+        "main:52": "4.4",
+        "data:56": "4.4",
+        "msg_type:22": "4.4",
+        "data:21": "4.5",
+        "file_bytes:52": "4.5",
+        "parse_packet_notification_message:1": "4.5",
+        "main:45": "4.5",
+        "notification_body:57": "4.5",
+        "error_subcode:20": "4.5",
+        "remaining_bytes:22": "4.5",
+        "result:33": "4.5",
+        "error_code:19": "4.5"
+    },
+    "line_to_element_py": {
+        "1": [
+            "4.5",
+            [
+                "current_result",
+                "remaining_input",
+                "parse_packet_message_header"
+            ]
+        ],
+        "20": [
+            "4.5",
+            [
+                "marker"
+            ]
+        ],
+        "25": [
+            "4.3",
+            [
+                "length"
+            ]
+        ],
+        "32": [
+            "4.1",
+            [
+                "type_code"
+            ]
+        ],
+        "37": [
+            "4.4",
+            [
+                "result"
+            ]
+        ],
+        "45": [
+            "4.5",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "50": [
+            "4.3",
+            [
+                "path_attributes"
+            ]
+        ],
+        "54": [
+            "4.3",
+            [
+                "path_attributes_data"
+            ]
+        ],
+        "49": [
+            "4.2",
+            [
+                "current_result",
+                "remaining_input",
+                "parse_packet_bgp_open_message"
+            ]
+        ],
+        "68": [
+            "4",
+            [
+                "version"
+            ]
+        ],
+        "69": [
+            "4",
+            [
+                "my_autonomous_system"
+            ]
+        ],
+        "70": [
+            "4",
+            [
+                "hold_time"
+            ]
+        ],
+        "71": [
+            "4.3",
+            [
+                "bgp_identifier"
+            ]
+        ],
+        "72": [
+            "4.3",
+            [
+                "opt_param_len"
+            ]
+        ],
+        "91": [
+            "4.3",
+            [
+                "optional_parameters"
+            ]
+        ],
+        "92": [
+            "4",
+            [
+                "opt_params_bytes"
+            ]
+        ],
+        "93": [
+            "4",
+            [
+                "opt_params_offset"
+            ]
+        ],
+        "97": [
+            "4",
+            [
+                "param_type"
+            ]
+        ],
+        "98": [
+            "4.2",
+            [
+                "param_length"
+            ]
+        ],
+        "101": [
+            "4",
+            [
+                "param_value"
+            ]
+        ],
+        "112": [
+            "4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "114": [
+            "4",
+            [
+                "result"
+            ]
+        ],
+        "125": [
+            "4",
+            [
+                "current_result",
+                "parse_packet_bgp_optional_parameter",
+                "remaining_input"
+            ]
+        ],
+        "137": [
+            "4",
+            [
+                "parse_packet_bgp_update_message",
+                "current_result",
+                "remaining_input"
+            ]
+        ],
+        "156": [
+            "4",
+            [
+                "withdrawn_routes_length"
+            ]
+        ],
+        "161": [
+            "4",
+            [
+                "withdrawn_routes"
+            ]
+        ],
+        "162": [
+            "4",
+            [
+                "withdrawn_routes_data"
+            ]
+        ],
+        "163": [
+            "4",
+            [
+                "idx"
+            ]
+        ],
+        "167": [
+            "4",
+            [
+                "prefix_length"
+            ]
+        ],
+        "169": [
+            "4",
+            [
+                "prefix_bytes"
+            ]
+        ],
+        "172": [
+            "4",
+            [
+                "prefix"
+            ]
+        ],
+        "180": [
+            "4",
+            [
+                "tpal_offset"
+            ]
+        ],
+        "183": [
+            "4",
+            [
+                "total_path_attribute_length"
+            ]
+        ],
+        "186": [
+            "4",
+            [
+                "path_attributes"
+            ]
+        ],
+        "187": [
+            "4",
+            [
+                "path_attr_offset"
+            ]
+        ],
+        "190": [
+            "4",
+            [
+                "path_attributes_data"
+            ]
+        ],
+        "191": [
+            "4",
+            [
+                "idx"
+            ]
+        ],
+        "195": [
+            "4",
+            [
+                "attr_flags"
+            ]
+        ],
+        "196": [
+            "4",
+            [
+                "attr_type_code"
+            ]
+        ],
+        "197": [
+            "4",
+            [
+                "ext_len"
+            ]
+        ],
+        "201": [
+            "4",
+            [
+                "attr_len"
+            ]
+        ],
+        "202": [
+            "4",
+            [
+                "attr_value_offset"
+            ]
+        ],
+        "203": [
+            "4",
+            [
+                "next_idx"
+            ]
+        ],
+        "207": [
+            "4",
+            [
+                "attr_len"
+            ]
+        ],
+        "208": [
+            "4",
+            [
+                "attr_value_offset"
+            ]
+        ],
+        "209": [
+            "4",
+            [
+                "next_idx"
+            ]
+        ],
+        "212": [
+            "4",
+            [
+                "attr_value"
+            ]
+        ],
+        "219": [
+            "4",
+            [
+                "idx"
+            ]
+        ],
+        "222": [
+            "4",
+            [
+                "nlri_offset"
+            ]
+        ],
+        "223": [
+            "4",
+            [
+                "nlri_data"
+            ]
+        ],
+        "224": [
+            "4",
+            [
+                "nlri"
+            ]
+        ],
+        "225": [
+            "4",
+            [
+                "idx"
+            ]
+        ],
+        "227": [
+            "4",
+            [
+                "prefix_start"
+            ]
+        ],
+        "230": [
+            "4",
+            [
+                "prefix_length"
+            ]
+        ],
+        "232": [
+            "4",
+            [
+                "prefix_bytes"
+            ]
+        ],
+        "235": [
+            "4",
+            [
+                "prefix"
+            ]
+        ],
+        "243": [
+            "4",
+            [
+                "result"
+            ]
+        ],
+        "252": [
+            "4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "255": [
+            "4",
+            [
+                "parse_packet_bgp_keepalive_message",
+                "current_result",
+                "remaining_input"
+            ]
+        ],
+        "274": [
+            "4",
+            [
+                "marker"
+            ]
+        ],
+        "275": [
+            "4",
+            [
+                "length"
+            ]
+        ],
+        "276": [
+            "4",
+            [
+                "msg_type"
+            ]
+        ],
+        "291": [
+            "4",
+            [
+                "result"
+            ]
+        ],
+        "301": [
+            "4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "305": [
+            "4",
+            [
+                "parse_packet_notification_message",
+                "current_result",
+                "remaining_input"
+            ]
+        ],
+        "323": [
+            "4",
+            [
+                "error_code"
+            ]
+        ],
+        "324": [
+            "4",
+            [
+                "error_subcode"
+            ]
+        ],
+        "325": [
+            "4",
+            [
+                "data"
+            ]
+        ],
+        "326": [
+            "4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "337": [
+            "4",
+            [
+                "result"
+            ]
+        ],
+        "348": [
+            "4",
+            [
+                "main"
+            ]
+        ],
+        "355": [
+            "4",
+            [
+                "data"
+            ]
+        ],
+        "21": [
+            "4.5",
+            [
+                "data"
+            ]
+        ],
+        "22": [
+            "4.5",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "23": [
+            "4.2",
+            [
+                "bgp_identifier"
+            ]
+        ],
+        "24": [
+            "4.2",
+            [
+                "opt_param_len"
+            ]
+        ],
+        "43": [
+            "4.2",
+            [
+                "optional_parameters"
+            ]
+        ],
+        "44": [
+            "4.3",
+            [
+                "tpal_offset"
+            ]
+        ],
+        "53": [
+            "4.2",
+            [
+                "param_value"
+            ]
+        ],
+        "64": [
+            "4.2",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "66": [
+            "4.3",
+            [
+                "attr_value_offset"
+            ]
+        ],
+        "78": [
+            "4.2",
+            [
+                "current_result",
+                "parse_packet_bgp_optional_parameter",
+                "remaining_input"
+            ]
+        ],
+        "103": [
+            "4.2",
+            [
+                "open_body"
+            ]
+        ],
+        "26": [
+            "4.3",
+            [
+                "withdrawn_routes_data"
+            ]
+        ],
+        "27": [
+            "4.3",
+            [
+                "idx"
+            ]
+        ],
+        "31": [
+            "4.3",
+            [
+                "prefix_length"
+            ]
+        ],
+        "33": [
+            "4.5",
+            [
+                "result"
+            ]
+        ],
+        "36": [
+            "4.3",
+            [
+                "prefix"
+            ]
+        ],
+        "47": [
+            "4.4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "51": [
+            "4.3",
+            [
+                "path_attr_offset"
+            ]
+        ],
+        "55": [
+            "4.3",
+            [
+                "idx"
+            ]
+        ],
+        "59": [
+            "4.3",
+            [
+                "attr_flags"
+            ]
+        ],
+        "60": [
+            "4.3",
+            [
+                "attr_type_code"
+            ]
+        ],
+        "61": [
+            "4.3",
+            [
+                "ext_len"
+            ]
+        ],
+        "65": [
+            "4.3",
+            [
+                "attr_len"
+            ]
+        ],
+        "67": [
+            "4.3",
+            [
+                "next_idx"
+            ]
+        ],
+        "73": [
+            "4.3",
+            [
+                "next_idx"
+            ]
+        ],
+        "76": [
+            "4.3",
+            [
+                "attr_value"
+            ]
+        ],
+        "83": [
+            "4.3",
+            [
+                "idx"
+            ]
+        ],
+        "86": [
+            "4.3",
+            [
+                "nlri_offset"
+            ]
+        ],
+        "87": [
+            "4.3",
+            [
+                "nlri_data"
+            ]
+        ],
+        "88": [
+            "4.3",
+            [
+                "nlri"
+            ]
+        ],
+        "89": [
+            "4.3",
+            [
+                "idx"
+            ]
+        ],
+        "94": [
+            "4.3",
+            [
+                "prefix_length"
+            ]
+        ],
+        "96": [
+            "4.3",
+            [
+                "prefix_bytes"
+            ]
+        ],
+        "99": [
+            "4.3",
+            [
+                "prefix"
+            ]
+        ],
+        "107": [
+            "4.3",
+            [
+                "result"
+            ]
+        ],
+        "116": [
+            "4.3",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "119": [
+            "4.3",
+            [
+                "main"
+            ]
+        ],
+        "123": [
+            "4.3",
+            [
+                "data"
+            ]
+        ],
+        "52": [
+            "4.5",
+            [
+                "file_bytes"
+            ]
+        ],
+        "56": [
+            "4.4",
+            [
+                "data"
+            ]
+        ],
+        "19": [
+            "4.5",
+            [
+                "error_code"
+            ]
+        ],
+        "57": [
+            "4.5",
+            [
+                "notification_body"
+            ]
+        ]
+    },
+    "py_function_scope": {
+        "parse_packet_message_header": [
+            "4.1",
+            [
+                1,
+                47
+            ]
+        ],
+        "main": [
+            "4.5",
+            [
+                348,
+                381
+            ]
+        ],
+        "parse_packet_bgp_open_message": [
+            "4.2",
+            [
+                49,
+                123
+            ]
+        ],
+        "parse_packet_bgp_optional_parameter": [
+            "4.2",
+            [
+                125,
+                135
+            ]
+        ],
+        "parse_packet_bgp_update_message": [
+            "4.3",
+            [
+                137,
+                253
+            ]
+        ],
+        "parse_packet_bgp_keepalive_message": [
+            "4.4",
+            [
+                255,
+                303
+            ]
+        ],
+        "parse_packet_notification_message": [
+            "4.5",
+            [
+                305,
+                346
+            ]
+        ]
+    }
+}

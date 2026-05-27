@@ -1,0 +1,10 @@
+entrypoint typedef struct _IPv6Header {
+  UINT32BE Version: 4 { Version == 6 };
+  UINT32BE TrafficClass: 8;
+  UINT32BE FlowLabel: 20;
+  UINT16BE PayloadLength;
+  UINT8BE NextHeader; // Can't further specify NextHeader here due to it being a reference to another RFC and not in RFC 8200 itself.
+  UINT8BE HopLimit;
+  UINT8BE SourceAddress[16];
+  UINT8BE DestinationAddress[16];
+} IPv6Header;

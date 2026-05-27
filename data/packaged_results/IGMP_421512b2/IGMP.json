@@ -1,0 +1,893 @@
+{
+    "protocol_name": "IGMP",
+    "root": "4",
+    "sections": {
+        "4.1": {
+            "number": "4.1",
+            "title": "Membership Query Message",
+            "content": "4.1. Membership Query Message\n   Membership Queries are sent by IP multicast routers to query the\n   multicast reception state of neighboring interfaces.  Queries have\n   the following format:\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |  Type = 0x11  | Max Resp Code |           Checksum            |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                         Group Address                         |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      | Resv  |S| QRV |     QQIC      |     Number of Sources (N)     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Source Address [1]                      |\n      +-                                                             -+\n      |                       Source Address [2]                      |\n      +-                              .                              -+\n      .                               .                               .\n      .                               .                               .\n      +-                                                             -+\n      |                       Source Address [N]                      |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Max Resp Code    \n   The Max Resp Code field specifies the maximum time allowed \n   before sending a responding report.  The actual time allowed, called the Max\n   Resp Time, is represented in units of 1/10 second and is derived from\n   the Max Resp Code as follows:\n   If Max Resp Code < 128, Max Resp Time = Max Resp Code\n   If Max Resp Code >= 128, Max Resp Code represents a floating-point\n   value as follows:\n       0 1 2 3 4 5 6 7\n      +-+-+-+-+-+-+-+-+\n      |1| exp | mant  |\n      +-+-+-+-+-+-+-+-+\n   Max Resp Time = (mant | 0x10) << (exp + 3)\n   Small values of Max Resp Time allow IGMPv3 routers to tune the \"leave\n   latency\" (the time between the moment the last host leaves a group\n   and the moment the routing protocol is notified that there are no\n   more members).  Larger values, especially in the exponential range,\n   allow tuning of the burstiness of IGMP traffic on a network.\n   Checksum\n   The Checksum is the 16-bit one's complement of the one's complement\n   sum of the whole IGMP message (the entire IP payload).  For computing\n   the checksum, the Checksum field is set to zero.  When receiving\n   packets, the checksum MUST be verified before processing a packet.\n   [RFC-1071]\n   Group Address\n   The Group Address field is set to zero when sending a General Query,\n   and set to the IP multicast address being queried when sending a\n   Group-Specific Query or Group-and-Source-Specific Query (see section\n   4.1.9, below).\n   Resv (Reserved)\n   The Resv field is set to zero on transmission, and ignored on\n   reception.\n   S Flag (Suppress Router-Side Processing)\n   When set to one, the S Flag indicates to any receiving multicast\n   routers that they are to suppress the normal timer updates they\n   perform upon hearing a Query.  It does not, however, suppress the\n   querier election or the normal \"host-side\" processing of a Query that\n   a router may be required to perform as a consequence of itself being\n   a group member.\n   QRV (Querier's Robustness Variable)\n   If non-zero, the QRV field contains the [Robustness Variable] value\n   used by the querier, i.e., the sender of the Query.  If the querier's\n   [Robustness Variable] exceeds 7, the maximum value of the QRV field,\n   the QRV is set to zero.  Routers adopt the QRV value from the most\n   recently received Query as their own [Robustness Variable] value,\n   unless that most recently received QRV was zero, in which case the\n   receivers use the default [Robustness Variable] value specified in\n   section 8.1 or a statically configured value.\n   QQIC (Querier's Query Interval Code)\n   The Querier's Query Interval Code field specifies the [Query\n   Interval] used by the querier.  The actual interval, called the\n   Querier's Query Interval (QQI), is represented in units of seconds\n   and is derived from the Querier's Query Interval Code as follows:\n   If QQIC < 128, QQI = QQIC\n   If QQIC >= 128, QQIC represents a floating-point value as follows:\n       0 1 2 3 4 5 6 7\n      +-+-+-+-+-+-+-+-+\n      |1| exp | mant  |\n      +-+-+-+-+-+-+-+-+\n   QQI = (mant | 0x10) << (exp + 3)\n   Multicast routers that are not the current querier adopt the QQI\n   value from the most recently received Query as their own [Query\n   Interval] value, unless that most recently received QQI was zero, in\n   which case the receiving routers use the default [Query Interval]\n   value specified in section 8.2.\n   Number of Sources (N)\n   The Number of Sources (N) field specifies how many source addresses\n   are present in the Query.  This number is zero in a General Query or\n   a Group-Specific Query, and non-zero in a Group-and-Source-Specific\n   Query.  This number is limited by the MTU of the network over which\n   the Query is transmitted.  For example, on an Ethernet with an MTU of\n   1500 octets, the IP header including the Router Alert option consumes\n   24 octets, and the IGMP fields up to including the Number of Sources\n   (N) field consume 12 octets, leaving 1464 octets for source\n   addresses, which limits the number of source addresses to 366\n   (1464/4).\n   Source Address [i]\n   The Source Address [i] fields are a vector of n IP unicast addresses,\n   where n is the value in the Number of Sources (N) field.\n   Additional Data\n   If the Packet Length field in the IP header of a received Query\n   indicates that there are additional octets of data present, beyond\n   the fields described here, IGMPv3 implementations MUST include those\n   octets in the computation to verify the received IGMP Checksum, but\n   MUST otherwise ignore those additional octets.  When sending a Query,\n   an IGMPv3 implementation MUST NOT include additional octets beyond\n   the fields described here.\n   Query Variants\n   There are three variants of the Query message:\n   1. A \"General Query\" is sent by a multicast router to learn the\n      complete multicast reception state of the neighboring interfaces\n      (that is, the interfaces attached to the network on which the\n      Query is transmitted).  In a General Query, both the Group Address\n      field and the Number of Sources (N) field are zero.\n   2. A \"Group-Specific Query\" is sent by a multicast router to learn\n      the reception state, with respect to a *single* multicast address,\n      of the neighboring interfaces.  In a Group-Specific Query, the\n      Group Address field contains the multicast address of interest,\n      and the Number of Sources (N) field contains zero.\n   3. A \"Group-and-Source-Specific Query\" is sent by a multicast router\n      to learn if any neighboring interface desires reception of packets\n      sent to a specified multicast address, from any of a specified\n      list of sources.  In a Group-and-Source-Specific Query, the Group\n      Address field contains the multicast address of interest, and the\n      Source Address [i] fields contain the source address(es) of\n      interest.\n   IP Destination Addresses for Queries\n   In IGMPv3, General Queries are sent with an IP destination address of\n   224.0.0.1, the all-systems multicast address.  Group-Specific and\n   Group-and-Source-Specific Queries are sent with an IP destination\n   address equal to the  multicast address of interest.  *However*, a\n   system MUST accept and  process any Query whose IP Destination\n   Address field contains *any* of the addresses (unicast or multicast)\n   assigned to the interface on which the Query arrives.",
+            "summary": "Section 4.1 describes the Membership Query Message used by IP multicast routers to determine the multicast reception state of neighboring interfaces, detailing its format, fields, and three variants (General, Group-Specific, and Group-and-Source-Specific Queries), as well as the handling of IP destination addresses and additional data.",
+            "format_path": "data/3d_syntaxs/IGMPV3MEMBERSHIPQUERY_009945/IGMPV3MEMBERSHIPQUERY.3d",
+            "parser_path": "data/python_parser/IGMPV3_MEMBERSHIP_QUERY_45cdf1/IGMPV3_MEMBERSHIP_QUERY.py"
+        },
+        "4.2": {
+            "number": "4.2",
+            "title": "Version 3 Membership Report Message",
+            "content": "4.2. Version 3 Membership Report Message\n   Version 3 Membership Reports are sent by IP systems to report (to\n   neighboring routers) the current multicast reception state, or\n   changes in the multicast reception state, of their interfaces.\n   Reports have the following format:\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |  Type = 0x22  |    Reserved   |           Checksum            |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |           Reserved            |  Number of Group Records (M)  |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                        Group Record [1]                       .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                        Group Record [2]                       .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                               .                               |\n      .                               .                               .\n      |                               .                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                        Group Record [M]                       .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   where each Group Record has the following internal format:\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |  Record Type  |  Aux Data Len |     Number of Sources (N)     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Multicast Address                       |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Source Address [1]                      |\n      +-                                                             -+\n      |                       Source Address [2]                      |\n      +-                                                             -+\n      .                               .                               .\n      .                               .                               .\n      .                               .                               .\n      +-                                                             -+\n      |                       Source Address [N]                      |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                         Auxiliary Data                        .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Reserved\n   The Reserved fields are set to zero on transmission, and ignored on\n   reception.\n   Checksum\n   The Checksum is the 16-bit one's complement of the one's complement\n   sum of the whole IGMP message (the entire IP payload).  For computing\n   the checksum, the Checksum field is set to zero.  When receiving\n   packets, the checksum MUST be verified before processing a message.\n   Number of Group Records (M)\n   The Number of Group Records (M) field specifies how many Group\n   Records are present in this Report.\n   Group Record\n   Each Group Record is a block of fields containing information\n   pertaining to the sender's membership in a single multicast group on\n   the interface from which the Report is sent.\n   Record Type\n   See section 4.2.12, below.\n   Aux Data Len\n   The Aux Data Len field contains the length of the Auxiliary Data\n   field in this Group Record, in units of 32-bit words.  It may contain\n   zero, to indicate the absence of any auxiliary data.\n   Number of Sources (N)\n   The Number of Sources (N) field specifies how many source addresses\n   are present in this Group Record.\n   Multicast Address\n   The Multicast Address field contains the IP multicast address to\n   which this Group Record pertains.\n   Source Address [i]\n   The Source Address [i] fields are a vector of n IP unicast addresses,\n   where n is the value in this record's Number of Sources (N) field.\n   Auxiliary Data\n   The Auxiliary Data field, if present, contains additional information\n   pertaining to this Group Record.  The protocol specified in this\n   document, IGMPv3, does not define any auxiliary data.  Therefore,\n   implementations of IGMPv3 MUST NOT include any auxiliary data (i.e.,\n   MUST set the Aux Data Len field to zero) in any transmitted Group\n   Record, and MUST ignore any auxiliary data present in any received\n   Group Record.  The semantics and internal encoding of the Auxiliary\n   Data field are to be defined by any future version or extension of\n   IGMP that uses this field.\n   Additional Data\n   If the Packet Length field in the IP header of a received Report\n   indicates that there are additional octets of data present, beyond\n   the last Group Record, IGMPv3 implementations MUST include those\n   octets in the computation to verify the received IGMP Checksum, but\n   MUST otherwise ignore those additional octets.  When sending a\n   Report, an IGMPv3 implementation MUST NOT include additional octets\n   beyond the last Group Record.\n   Group Record Types\n   There are a number of different types of Group Records that may be\n   included in a Report message:\n   o A \"Current-State Record\" is sent by a system in response to a Query\n     received on an interface.  It reports the current reception state\n     of that interface, with respect to a single multicast address.  The\n     Record Type of a Current-State Record may be one of the following\n     two values:\n        Value  Name and Meaning\n        -----  ----------------\n          1    MODE_IS_INCLUDE - indicates that the interface has a\n               filter mode of INCLUDE for the specified multicast\n               address.  The Source Address [i] fields in this Group\n               Record contain the interface's source list for the\n               specified multicast address, if it is non-empty.\n          2    MODE_IS_EXCLUDE - indicates that the interface has a\n               filter mode of EXCLUDE for the specified multicast\n               address.  The Source Address [i] fields in this Group\n               Record contain the interface's source list for the\n               specified multicast address, if it is non-empty.\n   o A \"Filter-Mode-Change Record\" is sent by a system whenever a local\n     invocation of IPMulticastListen causes a change of the filter mode\n     (i.e., a change from INCLUDE to EXCLUDE, or from EXCLUDE to\n     INCLUDE), of the interface-level state entry for a particular\n     multicast address.  The Record is included in a Report sent from\n     the interface on which the change occurred.  The Record Type of a\n     Filter-Mode-Change Record may be one of the following two values:\n          3    CHANGE_TO_INCLUDE_MODE - indicates that the interface\n               has changed to INCLUDE filter mode for the specified\n               multicast address.  The Source Address [i] fields\n               in this Group Record contain the interface's new\n               source list for the specified multicast address,\n               if it is non-empty.\n          4    CHANGE_TO_EXCLUDE_MODE - indicates that the interface\n               has changed to EXCLUDE filter mode for the specified\n               multicast address.  The Source Address [i] fields\n               in this Group Record contain the interface's new\n               source list for the specified multicast address,\n               if it is non-empty.\n   o A \"Source-List-Change Record\" is sent by a system whenever a local\n     invocation of IPMulticastListen causes a change of source list that\n     is *not* coincident with a change of filter mode, of the\n     interface-level state entry for a particular multicast address.\n     The Record is included in a Report sent from the interface on which\n     the change occurred.  The Record Type of a Source-List-Change\n     Record may be one of the following two values:\n          5    ALLOW_NEW_SOURCES - indicates that the Source Address\n               [i] fields in this Group Record contain a list of the\n               additional sources that the system wishes to\n               hear from, for packets sent to the specified\n               multicast address.  If the change was to an INCLUDE\n               source list, these are the addresses that were added\n               to the list; if the change was to an EXCLUDE source\n               list, these are the addresses that were deleted from\n               the list.\n          6    BLOCK_OLD_SOURCES - indicates that the Source Address\n               [i] fields in this Group Record contain a list of the\n               sources that the system no longer wishes to\n               hear from, for packets sent to the specified\n               multicast address.  If the change was to an INCLUDE\n               source list, these are the addresses that were\n               deleted from  the list; if the change was to an\n               EXCLUDE source list, these are the addresses that\n               were added to the list.\n   If a change of source list results in both allowing new sources and\n   blocking old sources, then two Group Records are sent for the same\n   multicast address, one of type ALLOW_NEW_SOURCES and one of type\n   BLOCK_OLD_SOURCES.\n   We use the term \"State-Change Record\" to refer to either a Filter-\n   Mode-Change Record or a Source-List-Change Record.\n   Unrecognized Record Type values MUST be silently ignored.\n   IP Source Addresses for Reports\n   An IGMP report is sent with a valid IP source address for the\n   destination subnet.  The 0.0.0.0 source address may be used by a\n   system that has not yet acquired an IP address.  Note that the\n   0.0.0.0 source address may simultaneously be used by multiple systems\n   on a LAN.  Routers MUST accept a report with a source address of\n   0.0.0.0.\n   IP Destination Addresses for Reports\n   Version 3 Reports are sent with an IP destination address of\n   224.0.0.22, to which all IGMPv3-capable multicast routers listen.  A\n   system that is operating in version 1 or version 2 compatibility\n   modes sends version 1 or version 2 Reports to the multicast group\n   specified in the Group Address field of the Report.  In addition, a\n   system MUST accept and process any version 1 or version 2 Report\n   whose IP Destination Address field contains *any* of the addresses\n   (unicast or multicast) assigned to the interface on which the Report\n   arrives.\n   Notation for Group Records\n   In the rest of this document, we use the following notation to\n   describe the contents of a Group Record pertaining to a particular\n   multicast address:\n      IS_IN ( x )  -  Type MODE_IS_INCLUDE, source addresses x\n      IS_EX ( x )  -  Type MODE_IS_EXCLUDE, source addresses x\n      TO_IN ( x )  -  Type CHANGE_TO_INCLUDE_MODE, source addresses x\n      TO_EX ( x )  -  Type CHANGE_TO_EXCLUDE_MODE, source addresses x\n      ALLOW ( x )  -  Type ALLOW_NEW_SOURCES, source addresses x\n      BLOCK ( x )  -  Type BLOCK_OLD_SOURCES, source addresses x\n   where x is either:\n   o a capital letter (e.g., \"A\") to represent the set of source\n     addresses, or\n   o a set expression (e.g., \"A+B\"), where \"A+B\" means the union of sets\n     A and B, \"A*B\" means the intersection of sets A and B, and \"A-B\"\n     means the removal of all elements of set B from set A.\n   Membership Report Size\n   If the set of Group Records required in a Report does not fit within\n   the size limit of a single Report message (as determined by the MTU\n   of the network on which it will be sent), the Group Records are sent\n   in as many Report messages as needed to report the entire set.\n   If a single Group Record contains so many source addresses that it\n   does not fit within the size limit of a single Report message, if its\n   Type is not MODE_IS_EXCLUDE or CHANGE_TO_EXCLUDE_MODE, it is split\n   into multiple Group Records, each containing a different subset of\n   the source addresses and each sent in a separate Report message.  If\n   its Type is MODE_IS_EXCLUDE or CHANGE_TO_EXCLUDE_MODE, a single Group\n   Record is sent, containing as many source addresses as can fit, and\n   the remaining source addresses are not reported; though the choice of\n   which sources to report is arbitrary, it is preferable to report the\n   same set of sources in each subsequent report, rather than reporting\n   different sources each time.",
+            "summary": "This section describes the structure and function of IGMPv3 Membership Report messages, detailing their format, the meaning of each field, the types of Group Records they can contain, and the rules for sending and processing these reports to communicate multicast reception state changes to routers.",
+            "format_path": "data/3d_syntaxs/IGMPV3MEMBERSHIPREPORT_40666a/IGMPV3MEMBERSHIPREPORT.3d",
+            "parser_path": "data/python_parser/IGMPV3_MEMBERSHIP_REPORT_711b71/IGMPV3_MEMBERSHIP_REPORT.py"
+        },
+        "4": {
+            "number": "4",
+            "title": "Message Formats",
+            "content": "4. Message Formats\n   IGMP messages are encapsulated in IPv4 datagrams, with an IP protocol\n   number of 2.  Every IGMP message described in this document is sent\n   with an IP Time-to-Live of 1, IP Precedence of Internetwork Control\n   (e.g., Type of Service 0xc0), and carries an IP Router Alert option\n   [RFC-2113] in its IP header.  IGMP message types are registered by\n   the IANA [IANA-REG] as described by [RFC-3228].\n   There are two IGMP message types of concern to the IGMPv3 protocol\n   described in this document:\n      Type Number (hex)   Message Name\n      -----------------   ------------\n            0x11          Membership Query\n            0x22          Version 3 Membership Report\n   An implementation of IGMPv3 MUST also support the following three\n   message types, for interoperation with previous versions of IGMP (see\n   section 7):\n           0x12          Version 1 Membership Report    [RFC-1112]\n           0x16          Version 2 Membership Report    [RFC-2236]\n           0x17          Version 2 Leave Group          [RFC-2236]\n   Unrecognized message types MUST be silently ignored.  Other message\n   types may be used by newer versions or extensions of IGMP, by\n   multicast routing protocols, or for other uses.\n   In this document, unless otherwise qualified, the capitalized words\n   \"Query\" and \"Report\" refer to IGMP Membership Queries and IGMP\n   Version 3 Membership Reports, respectively.\n4.1. Membership Query Message\n   Membership Queries are sent by IP multicast routers to query the\n   multicast reception state of neighboring interfaces.  Queries have\n   the following format:\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |  Type = 0x11  | Max Resp Code |           Checksum            |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                         Group Address                         |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      | Resv  |S| QRV |     QQIC      |     Number of Sources (N)     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Source Address [1]                      |\n      +-                                                             -+\n      |                       Source Address [2]                      |\n      +-                              .                              -+\n      .                               .                               .\n      .                               .                               .\n      +-                                                             -+\n      |                       Source Address [N]                      |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Max Resp Code    \n   The Max Resp Code field specifies the maximum time allowed \n   before sending a responding report.  The actual time allowed, called the Max\n   Resp Time, is represented in units of 1/10 second and is derived from\n   the Max Resp Code as follows:\n   If Max Resp Code < 128, Max Resp Time = Max Resp Code\n   If Max Resp Code >= 128, Max Resp Code represents a floating-point\n   value as follows:\n       0 1 2 3 4 5 6 7\n      +-+-+-+-+-+-+-+-+\n      |1| exp | mant  |\n      +-+-+-+-+-+-+-+-+\n   Max Resp Time = (mant | 0x10) << (exp + 3)\n   Small values of Max Resp Time allow IGMPv3 routers to tune the \"leave\n   latency\" (the time between the moment the last host leaves a group\n   and the moment the routing protocol is notified that there are no\n   more members).  Larger values, especially in the exponential range,\n   allow tuning of the burstiness of IGMP traffic on a network.\n   Checksum\n   The Checksum is the 16-bit one's complement of the one's complement\n   sum of the whole IGMP message (the entire IP payload).  For computing\n   the checksum, the Checksum field is set to zero.  When receiving\n   packets, the checksum MUST be verified before processing a packet.\n   [RFC-1071]\n   Group Address\n   The Group Address field is set to zero when sending a General Query,\n   and set to the IP multicast address being queried when sending a\n   Group-Specific Query or Group-and-Source-Specific Query (see section\n   4.1.9, below).\n   Resv (Reserved)\n   The Resv field is set to zero on transmission, and ignored on\n   reception.\n   S Flag (Suppress Router-Side Processing)\n   When set to one, the S Flag indicates to any receiving multicast\n   routers that they are to suppress the normal timer updates they\n   perform upon hearing a Query.  It does not, however, suppress the\n   querier election or the normal \"host-side\" processing of a Query that\n   a router may be required to perform as a consequence of itself being\n   a group member.\n   QRV (Querier's Robustness Variable)\n   If non-zero, the QRV field contains the [Robustness Variable] value\n   used by the querier, i.e., the sender of the Query.  If the querier's\n   [Robustness Variable] exceeds 7, the maximum value of the QRV field,\n   the QRV is set to zero.  Routers adopt the QRV value from the most\n   recently received Query as their own [Robustness Variable] value,\n   unless that most recently received QRV was zero, in which case the\n   receivers use the default [Robustness Variable] value specified in\n   section 8.1 or a statically configured value.\n   QQIC (Querier's Query Interval Code)\n   The Querier's Query Interval Code field specifies the [Query\n   Interval] used by the querier.  The actual interval, called the\n   Querier's Query Interval (QQI), is represented in units of seconds\n   and is derived from the Querier's Query Interval Code as follows:\n   If QQIC < 128, QQI = QQIC\n   If QQIC >= 128, QQIC represents a floating-point value as follows:\n       0 1 2 3 4 5 6 7\n      +-+-+-+-+-+-+-+-+\n      |1| exp | mant  |\n      +-+-+-+-+-+-+-+-+\n   QQI = (mant | 0x10) << (exp + 3)\n   Multicast routers that are not the current querier adopt the QQI\n   value from the most recently received Query as their own [Query\n   Interval] value, unless that most recently received QQI was zero, in\n   which case the receiving routers use the default [Query Interval]\n   value specified in section 8.2.\n   Number of Sources (N)\n   The Number of Sources (N) field specifies how many source addresses\n   are present in the Query.  This number is zero in a General Query or\n   a Group-Specific Query, and non-zero in a Group-and-Source-Specific\n   Query.  This number is limited by the MTU of the network over which\n   the Query is transmitted.  For example, on an Ethernet with an MTU of\n   1500 octets, the IP header including the Router Alert option consumes\n   24 octets, and the IGMP fields up to including the Number of Sources\n   (N) field consume 12 octets, leaving 1464 octets for source\n   addresses, which limits the number of source addresses to 366\n   (1464/4).\n   Source Address [i]\n   The Source Address [i] fields are a vector of n IP unicast addresses,\n   where n is the value in the Number of Sources (N) field.\n   Additional Data\n   If the Packet Length field in the IP header of a received Query\n   indicates that there are additional octets of data present, beyond\n   the fields described here, IGMPv3 implementations MUST include those\n   octets in the computation to verify the received IGMP Checksum, but\n   MUST otherwise ignore those additional octets.  When sending a Query,\n   an IGMPv3 implementation MUST NOT include additional octets beyond\n   the fields described here.\n   Query Variants\n   There are three variants of the Query message:\n   1. A \"General Query\" is sent by a multicast router to learn the\n      complete multicast reception state of the neighboring interfaces\n      (that is, the interfaces attached to the network on which the\n      Query is transmitted).  In a General Query, both the Group Address\n      field and the Number of Sources (N) field are zero.\n   2. A \"Group-Specific Query\" is sent by a multicast router to learn\n      the reception state, with respect to a *single* multicast address,\n      of the neighboring interfaces.  In a Group-Specific Query, the\n      Group Address field contains the multicast address of interest,\n      and the Number of Sources (N) field contains zero.\n   3. A \"Group-and-Source-Specific Query\" is sent by a multicast router\n      to learn if any neighboring interface desires reception of packets\n      sent to a specified multicast address, from any of a specified\n      list of sources.  In a Group-and-Source-Specific Query, the Group\n      Address field contains the multicast address of interest, and the\n      Source Address [i] fields contain the source address(es) of\n      interest.\n   IP Destination Addresses for Queries\n   In IGMPv3, General Queries are sent with an IP destination address of\n   224.0.0.1, the all-systems multicast address.  Group-Specific and\n   Group-and-Source-Specific Queries are sent with an IP destination\n   address equal to the  multicast address of interest.  *However*, a\n   system MUST accept and  process any Query whose IP Destination\n   Address field contains *any* of the addresses (unicast or multicast)\n   assigned to the interface on which the Query arrives.\n4.2. Version 3 Membership Report Message\n   Version 3 Membership Reports are sent by IP systems to report (to\n   neighboring routers) the current multicast reception state, or\n   changes in the multicast reception state, of their interfaces.\n   Reports have the following format:\n       0                   1                   2                   3\n       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |  Type = 0x22  |    Reserved   |           Checksum            |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |           Reserved            |  Number of Group Records (M)  |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                        Group Record [1]                       .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                        Group Record [2]                       .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                               .                               |\n      .                               .                               .\n      |                               .                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                        Group Record [M]                       .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   where each Group Record has the following internal format:\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |  Record Type  |  Aux Data Len |     Number of Sources (N)     |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Multicast Address                       |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                       Source Address [1]                      |\n      +-                                                             -+\n      |                       Source Address [2]                      |\n      +-                                                             -+\n      .                               .                               .\n      .                               .                               .\n      .                               .                               .\n      +-                                                             -+\n      |                       Source Address [N]                      |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n      |                                                               |\n      .                                                               .\n      .                         Auxiliary Data                        .\n      .                                                               .\n      |                                                               |\n      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Reserved\n   The Reserved fields are set to zero on transmission, and ignored on\n   reception.\n   Checksum\n   The Checksum is the 16-bit one's complement of the one's complement\n   sum of the whole IGMP message (the entire IP payload).  For computing\n   the checksum, the Checksum field is set to zero.  When receiving\n   packets, the checksum MUST be verified before processing a message.\n   Number of Group Records (M)\n   The Number of Group Records (M) field specifies how many Group\n   Records are present in this Report.\n   Group Record\n   Each Group Record is a block of fields containing information\n   pertaining to the sender's membership in a single multicast group on\n   the interface from which the Report is sent.\n   Record Type\n   See section 4.2.12, below.\n   Aux Data Len\n   The Aux Data Len field contains the length of the Auxiliary Data\n   field in this Group Record, in units of 32-bit words.  It may contain\n   zero, to indicate the absence of any auxiliary data.\n   Number of Sources (N)\n   The Number of Sources (N) field specifies how many source addresses\n   are present in this Group Record.\n   Multicast Address\n   The Multicast Address field contains the IP multicast address to\n   which this Group Record pertains.\n   Source Address [i]\n   The Source Address [i] fields are a vector of n IP unicast addresses,\n   where n is the value in this record's Number of Sources (N) field.\n   Auxiliary Data\n   The Auxiliary Data field, if present, contains additional information\n   pertaining to this Group Record.  The protocol specified in this\n   document, IGMPv3, does not define any auxiliary data.  Therefore,\n   implementations of IGMPv3 MUST NOT include any auxiliary data (i.e.,\n   MUST set the Aux Data Len field to zero) in any transmitted Group\n   Record, and MUST ignore any auxiliary data present in any received\n   Group Record.  The semantics and internal encoding of the Auxiliary\n   Data field are to be defined by any future version or extension of\n   IGMP that uses this field.\n   Additional Data\n   If the Packet Length field in the IP header of a received Report\n   indicates that there are additional octets of data present, beyond\n   the last Group Record, IGMPv3 implementations MUST include those\n   octets in the computation to verify the received IGMP Checksum, but\n   MUST otherwise ignore those additional octets.  When sending a\n   Report, an IGMPv3 implementation MUST NOT include additional octets\n   beyond the last Group Record.\n   Group Record Types\n   There are a number of different types of Group Records that may be\n   included in a Report message:\n   o A \"Current-State Record\" is sent by a system in response to a Query\n     received on an interface.  It reports the current reception state\n     of that interface, with respect to a single multicast address.  The\n     Record Type of a Current-State Record may be one of the following\n     two values:\n        Value  Name and Meaning\n        -----  ----------------\n          1    MODE_IS_INCLUDE - indicates that the interface has a\n               filter mode of INCLUDE for the specified multicast\n               address.  The Source Address [i] fields in this Group\n               Record contain the interface's source list for the\n               specified multicast address, if it is non-empty.\n          2    MODE_IS_EXCLUDE - indicates that the interface has a\n               filter mode of EXCLUDE for the specified multicast\n               address.  The Source Address [i] fields in this Group\n               Record contain the interface's source list for the\n               specified multicast address, if it is non-empty.\n   o A \"Filter-Mode-Change Record\" is sent by a system whenever a local\n     invocation of IPMulticastListen causes a change of the filter mode\n     (i.e., a change from INCLUDE to EXCLUDE, or from EXCLUDE to\n     INCLUDE), of the interface-level state entry for a particular\n     multicast address.  The Record is included in a Report sent from\n     the interface on which the change occurred.  The Record Type of a\n     Filter-Mode-Change Record may be one of the following two values:\n          3    CHANGE_TO_INCLUDE_MODE - indicates that the interface\n               has changed to INCLUDE filter mode for the specified\n               multicast address.  The Source Address [i] fields\n               in this Group Record contain the interface's new\n               source list for the specified multicast address,\n               if it is non-empty.\n          4    CHANGE_TO_EXCLUDE_MODE - indicates that the interface\n               has changed to EXCLUDE filter mode for the specified\n               multicast address.  The Source Address [i] fields\n               in this Group Record contain the interface's new\n               source list for the specified multicast address,\n               if it is non-empty.\n   o A \"Source-List-Change Record\" is sent by a system whenever a local\n     invocation of IPMulticastListen causes a change of source list that\n     is *not* coincident with a change of filter mode, of the\n     interface-level state entry for a particular multicast address.\n     The Record is included in a Report sent from the interface on which\n     the change occurred.  The Record Type of a Source-List-Change\n     Record may be one of the following two values:\n          5    ALLOW_NEW_SOURCES - indicates that the Source Address\n               [i] fields in this Group Record contain a list of the\n               additional sources that the system wishes to\n               hear from, for packets sent to the specified\n               multicast address.  If the change was to an INCLUDE\n               source list, these are the addresses that were added\n               to the list; if the change was to an EXCLUDE source\n               list, these are the addresses that were deleted from\n               the list.\n          6    BLOCK_OLD_SOURCES - indicates that the Source Address\n               [i] fields in this Group Record contain a list of the\n               sources that the system no longer wishes to\n               hear from, for packets sent to the specified\n               multicast address.  If the change was to an INCLUDE\n               source list, these are the addresses that were\n               deleted from  the list; if the change was to an\n               EXCLUDE source list, these are the addresses that\n               were added to the list.\n   If a change of source list results in both allowing new sources and\n   blocking old sources, then two Group Records are sent for the same\n   multicast address, one of type ALLOW_NEW_SOURCES and one of type\n   BLOCK_OLD_SOURCES.\n   We use the term \"State-Change Record\" to refer to either a Filter-\n   Mode-Change Record or a Source-List-Change Record.\n   Unrecognized Record Type values MUST be silently ignored.\n   IP Source Addresses for Reports\n   An IGMP report is sent with a valid IP source address for the\n   destination subnet.  The 0.0.0.0 source address may be used by a\n   system that has not yet acquired an IP address.  Note that the\n   0.0.0.0 source address may simultaneously be used by multiple systems\n   on a LAN.  Routers MUST accept a report with a source address of\n   0.0.0.0.\n   IP Destination Addresses for Reports\n   Version 3 Reports are sent with an IP destination address of\n   224.0.0.22, to which all IGMPv3-capable multicast routers listen.  A\n   system that is operating in version 1 or version 2 compatibility\n   modes sends version 1 or version 2 Reports to the multicast group\n   specified in the Group Address field of the Report.  In addition, a\n   system MUST accept and process any version 1 or version 2 Report\n   whose IP Destination Address field contains *any* of the addresses\n   (unicast or multicast) assigned to the interface on which the Report\n   arrives.\n   Notation for Group Records\n   In the rest of this document, we use the following notation to\n   describe the contents of a Group Record pertaining to a particular\n   multicast address:\n      IS_IN ( x )  -  Type MODE_IS_INCLUDE, source addresses x\n      IS_EX ( x )  -  Type MODE_IS_EXCLUDE, source addresses x\n      TO_IN ( x )  -  Type CHANGE_TO_INCLUDE_MODE, source addresses x\n      TO_EX ( x )  -  Type CHANGE_TO_EXCLUDE_MODE, source addresses x\n      ALLOW ( x )  -  Type ALLOW_NEW_SOURCES, source addresses x\n      BLOCK ( x )  -  Type BLOCK_OLD_SOURCES, source addresses x\n   where x is either:\n   o a capital letter (e.g., \"A\") to represent the set of source\n     addresses, or\n   o a set expression (e.g., \"A+B\"), where \"A+B\" means the union of sets\n     A and B, \"A*B\" means the intersection of sets A and B, and \"A-B\"\n     means the removal of all elements of set B from set A.\n   Membership Report Size\n   If the set of Group Records required in a Report does not fit within\n   the size limit of a single Report message (as determined by the MTU\n   of the network on which it will be sent), the Group Records are sent\n   in as many Report messages as needed to report the entire set.\n   If a single Group Record contains so many source addresses that it\n   does not fit within the size limit of a single Report message, if its\n   Type is not MODE_IS_EXCLUDE or CHANGE_TO_EXCLUDE_MODE, it is split\n   into multiple Group Records, each containing a different subset of\n   the source addresses and each sent in a separate Report message.  If\n   its Type is MODE_IS_EXCLUDE or CHANGE_TO_EXCLUDE_MODE, a single Group\n   Record is sent, containing as many source addresses as can fit, and\n   the remaining source addresses are not reported; though the choice of\n   which sources to report is arbitrary, it is preferable to report the\n   same set of sources in each subsequent report, rather than reporting\n   different sources each time.",
+            "summary": "This section describes the encapsulation and types of IGMP messages used in IGMPv3, including required support for previous IGMP versions for interoperability, and specifies that unrecognized message types must be ignored. Section 4.1 describes the Membership Query Message used by IP multicast routers to determine the multicast reception state of neighboring interfaces, detailing its format, fields, and three variants (General, Group-Specific, and Group-and-Source-Specific Queries), as well as the handling of IP destination addresses and additional data. This section describes the structure and function of IGMPv3 Membership Report messages, detailing their format, the meaning of each field, the types of Group Records they can contain, and the rules for sending and processing these reports to communicate multicast reception state changes to routers.",
+            "format_path": "data/3d_syntaxs/IGMPV3_56cdfc/IGMPV3.3d",
+            "parser_path": "data/python_parser/PARSER_53b251/PARSER.py"
+        }
+    },
+    "parent_of": {
+        "4.1": "4",
+        "4.2": "4"
+    },
+    "children_of": {
+        "4": [
+            "4.1",
+            "4.2"
+        ]
+    },
+    "name_to_section_3d": {
+        "MembershipQuery": {
+            "4": [
+                [
+                    5,
+                    16
+                ],
+                [
+                    5,
+                    16
+                ],
+                [
+                    19,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    5,
+                    16
+                ],
+                [
+                    5,
+                    16
+                ],
+                [
+                    19,
+                    3
+                ]
+            ]
+        },
+        "Type": {
+            "4": [
+                [
+                    6,
+                    3
+                ],
+                [
+                    19,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    6,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    19,
+                    3
+                ]
+            ]
+        },
+        "MaxRespCode": {
+            "4": [
+                [
+                    7,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    7,
+                    3
+                ]
+            ]
+        },
+        "Checksum": {
+            "4": [
+                [
+                    8,
+                    3
+                ],
+                [
+                    21,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    8,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    21,
+                    3
+                ]
+            ]
+        },
+        "GroupAddress": {
+            "4": [
+                [
+                    9,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    9,
+                    3
+                ]
+            ]
+        },
+        "Resv": {
+            "4": [
+                [
+                    10,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    10,
+                    3
+                ]
+            ]
+        },
+        "S": {
+            "4": [
+                [
+                    11,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    11,
+                    3
+                ]
+            ]
+        },
+        "QRV": {
+            "4": [
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    12,
+                    3
+                ]
+            ]
+        },
+        "QQIC": {
+            "4": [
+                [
+                    13,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    13,
+                    3
+                ]
+            ]
+        },
+        "NumberOfSources": {
+            "4": [
+                [
+                    14,
+                    3
+                ],
+                [
+                    11,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    14,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    11,
+                    3
+                ]
+            ]
+        },
+        "SourceAddress": {
+            "4": [
+                [
+                    15,
+                    3
+                ],
+                [
+                    13,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    15,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    13,
+                    3
+                ]
+            ]
+        },
+        "IGMPv3MembershipQuery": {
+            "4": [
+                [
+                    18,
+                    27
+                ],
+                [
+                    18,
+                    27
+                ]
+            ],
+            "4.1": [
+                [
+                    18,
+                    27
+                ],
+                [
+                    18,
+                    27
+                ]
+            ]
+        },
+        "query": {
+            "4": [
+                [
+                    19,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    19,
+                    3
+                ]
+            ]
+        },
+        "GroupRecord": {
+            "4": [
+                [
+                    8,
+                    16
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    24,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    8,
+                    16
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    24,
+                    3
+                ]
+            ]
+        },
+        "RecordType": {
+            "4": [
+                [
+                    9,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    9,
+                    3
+                ]
+            ]
+        },
+        "AuxDataLen": {
+            "4": [
+                [
+                    10,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    10,
+                    3
+                ]
+            ]
+        },
+        "MulticastAddress": {
+            "4": [
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    12,
+                    3
+                ]
+            ]
+        },
+        "IGMPv3MembershipReport": {
+            "4": [
+                [
+                    18,
+                    27
+                ],
+                [
+                    18,
+                    27
+                ]
+            ],
+            "4.2": [
+                [
+                    18,
+                    27
+                ],
+                [
+                    18,
+                    27
+                ]
+            ]
+        },
+        "Reserved1": {
+            "4": [
+                [
+                    20,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    20,
+                    3
+                ]
+            ]
+        },
+        "Reserved2": {
+            "4": [
+                [
+                    22,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    22,
+                    3
+                ]
+            ]
+        },
+        "NumberOfGroupRecords": {
+            "4": [
+                [
+                    23,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    23,
+                    3
+                ]
+            ]
+        },
+        "GroupRecords": {
+            "4": [
+                [
+                    24,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    24,
+                    3
+                ]
+            ]
+        }
+    },
+    "name_to_section_py": {
+        "main:186": "4",
+        "source_addr:47": "4",
+        "aux_data_len:92": "4",
+        "multicast_address:94": "4",
+        "aux_data_bytes:112": "4",
+        "type_field:149": "4",
+        "number_of_sources:29": "4",
+        "reserved2:152": "4",
+        "current_result:4": "4",
+        "num_sources:93": "4",
+        "remaining_bytes:53": "4",
+        "remaining_input:72": "4",
+        "current_result:72": "4",
+        "current_result:130": "4",
+        "source_addr:107": "4",
+        "offset:46": "4",
+        "offset:72": "4",
+        "sources:102": "4",
+        "remaining_input:130": "4",
+        "result:56": "4",
+        "s_flag:37": "4",
+        "reserved1:150": "4",
+        "data:193": "4",
+        "checksum:151": "4",
+        "type_field:23": "4",
+        "offset:163": "4",
+        "resv_s_qrv:27": "4",
+        "resv:36": "4",
+        "group_address:26": "4",
+        "parse_packet_igmpv3_group_record:72": "4",
+        "result:118": "4",
+        "result:174": "4",
+        "parse_packet_igmpv3_membership_report:130": "4",
+        "checksum:25": "4",
+        "new_offset:116": "4",
+        "qqic:28": "4",
+        "record_type:91": "4",
+        "source_offset:103": "4",
+        "group_records:164": "4",
+        "parse_packet_membership_query_message:4": "4",
+        "expected_length:41": "4",
+        "remaining_input:4": "4",
+        "qrv:38": "4",
+        "auxiliary_data:115": "4",
+        "remaining_bytes:172": "4",
+        "max_resp_code:24": "4",
+        "source_addresses:44": "4",
+        "num_group_records:153": "4",
+        "main:72": "4.1",
+        "data:79": "4.1",
+        "aux_data_len:79": "4.2",
+        "offset:59": "4.2",
+        "type_field:22": "4.2",
+        "result:105": "4.2",
+        "data:124": "4.2",
+        "parse_packet_igmpv3_group_record:59": "4.2",
+        "num_sources:80": "4.2",
+        "remaining_input:59": "4.2",
+        "reserved1:23": "4.2",
+        "record_type:78": "4.2",
+        "main:117": "4.2",
+        "remaining_bytes:45": "4.2",
+        "offset:36": "4.2",
+        "num_group_records:26": "4.2",
+        "remaining_input:3": "4.2",
+        "source_addr:94": "4.2",
+        "group_records:37": "4.2",
+        "source_offset:90": "4.2",
+        "current_result:3": "4.2",
+        "auxiliary_data:102": "4.2",
+        "checksum:24": "4.2",
+        "aux_data_bytes:99": "4.2",
+        "sources:89": "4.2",
+        "current_result:59": "4.2",
+        "parse_packet_igmpv3_membership_report:3": "4.2",
+        "reserved2:25": "4.2",
+        "result:47": "4.2",
+        "multicast_address:81": "4.2",
+        "new_offset:103": "4.2"
+    },
+    "line_to_element_py": {
+        "4": [
+            "4.1",
+            [
+                "remaining_input",
+                "current_result",
+                "parse_packet_membership_query_message"
+            ]
+        ],
+        "23": [
+            "4.2",
+            [
+                "type_field"
+            ]
+        ],
+        "24": [
+            "4.2",
+            [
+                "max_resp_code"
+            ]
+        ],
+        "25": [
+            "4.2",
+            [
+                "checksum"
+            ]
+        ],
+        "26": [
+            "4.2",
+            [
+                "group_address"
+            ]
+        ],
+        "27": [
+            "4.1",
+            [
+                "resv_s_qrv"
+            ]
+        ],
+        "28": [
+            "4.1",
+            [
+                "qqic"
+            ]
+        ],
+        "29": [
+            "4.1",
+            [
+                "number_of_sources"
+            ]
+        ],
+        "36": [
+            "4.2",
+            [
+                "resv"
+            ]
+        ],
+        "37": [
+            "4.2",
+            [
+                "s_flag"
+            ]
+        ],
+        "38": [
+            "4.1",
+            [
+                "qrv"
+            ]
+        ],
+        "41": [
+            "4.1",
+            [
+                "expected_length"
+            ]
+        ],
+        "44": [
+            "4.1",
+            [
+                "source_addresses"
+            ]
+        ],
+        "46": [
+            "4.1",
+            [
+                "offset"
+            ]
+        ],
+        "47": [
+            "4.2",
+            [
+                "source_addr"
+            ]
+        ],
+        "53": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "56": [
+            "4.1",
+            [
+                "result"
+            ]
+        ],
+        "72": [
+            "4.1",
+            [
+                "remaining_input",
+                "parse_packet_igmpv3_group_record",
+                "current_result",
+                "offset"
+            ]
+        ],
+        "79": [
+            "4.2",
+            [
+                "aux_data_len"
+            ]
+        ],
+        "91": [
+            "4",
+            [
+                "record_type"
+            ]
+        ],
+        "92": [
+            "4",
+            [
+                "aux_data_len"
+            ]
+        ],
+        "93": [
+            "4",
+            [
+                "num_sources"
+            ]
+        ],
+        "94": [
+            "4.2",
+            [
+                "multicast_address"
+            ]
+        ],
+        "102": [
+            "4.2",
+            [
+                "sources"
+            ]
+        ],
+        "103": [
+            "4.2",
+            [
+                "source_offset"
+            ]
+        ],
+        "107": [
+            "4",
+            [
+                "source_addr"
+            ]
+        ],
+        "112": [
+            "4",
+            [
+                "aux_data_bytes"
+            ]
+        ],
+        "115": [
+            "4",
+            [
+                "auxiliary_data"
+            ]
+        ],
+        "116": [
+            "4",
+            [
+                "new_offset"
+            ]
+        ],
+        "118": [
+            "4",
+            [
+                "result"
+            ]
+        ],
+        "130": [
+            "4",
+            [
+                "remaining_input",
+                "current_result",
+                "parse_packet_igmpv3_membership_report"
+            ]
+        ],
+        "149": [
+            "4",
+            [
+                "type_field"
+            ]
+        ],
+        "150": [
+            "4",
+            [
+                "reserved1"
+            ]
+        ],
+        "151": [
+            "4",
+            [
+                "checksum"
+            ]
+        ],
+        "152": [
+            "4",
+            [
+                "reserved2"
+            ]
+        ],
+        "153": [
+            "4",
+            [
+                "num_group_records"
+            ]
+        ],
+        "163": [
+            "4",
+            [
+                "offset"
+            ]
+        ],
+        "164": [
+            "4",
+            [
+                "group_records"
+            ]
+        ],
+        "172": [
+            "4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "174": [
+            "4",
+            [
+                "result"
+            ]
+        ],
+        "186": [
+            "4",
+            [
+                "main"
+            ]
+        ],
+        "193": [
+            "4",
+            [
+                "data"
+            ]
+        ],
+        "3": [
+            "4.2",
+            [
+                "remaining_input",
+                "current_result",
+                "parse_packet_igmpv3_membership_report"
+            ]
+        ],
+        "22": [
+            "4.2",
+            [
+                "type_field"
+            ]
+        ],
+        "45": [
+            "4.2",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "59": [
+            "4.2",
+            [
+                "remaining_input",
+                "parse_packet_igmpv3_group_record",
+                "current_result",
+                "offset"
+            ]
+        ],
+        "78": [
+            "4.2",
+            [
+                "record_type"
+            ]
+        ],
+        "80": [
+            "4.2",
+            [
+                "num_sources"
+            ]
+        ],
+        "81": [
+            "4.2",
+            [
+                "multicast_address"
+            ]
+        ],
+        "89": [
+            "4.2",
+            [
+                "sources"
+            ]
+        ],
+        "90": [
+            "4.2",
+            [
+                "source_offset"
+            ]
+        ],
+        "99": [
+            "4.2",
+            [
+                "aux_data_bytes"
+            ]
+        ],
+        "105": [
+            "4.2",
+            [
+                "result"
+            ]
+        ],
+        "117": [
+            "4.2",
+            [
+                "main"
+            ]
+        ],
+        "124": [
+            "4.2",
+            [
+                "data"
+            ]
+        ]
+    },
+    "py_function_scope": {
+        "parse_packet_membership_query_message": [
+            "4.1",
+            [
+                4,
+                69
+            ]
+        ],
+        "main": [
+            "4.2",
+            [
+                186,
+                213
+            ]
+        ],
+        "parse_packet_igmpv3_group_record": [
+            "4.2",
+            [
+                72,
+                127
+            ]
+        ],
+        "parse_packet_igmpv3_membership_report": [
+            "4.2",
+            [
+                130,
+                183
+            ]
+        ]
+    }
+}

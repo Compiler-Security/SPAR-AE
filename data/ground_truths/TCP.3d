@@ -1,0 +1,56 @@
+typedef struct _EndOfOptionList {
+  unit Empty;
+} EndOfOptionList;  
+
+typedef struct _NoOperation {
+  unit Empty;
+} NoOperation;
+
+typedef struct _MaximumSegmentSize {
+  UINT8BE Length { Length == 4 };
+  UINT16BE MSS;
+}MaximumSegmentSize;
+
+casetype _Option(UINT8BE Kind) {
+    switch(Kind) {
+        case 0: EndOfOptionList eool;
+        case 1: NoOperation noop;
+        case 2: MaximumSegmentSize mss;
+    }
+} Option;
+
+typedef struct _TCPOption(UINT8BE SYN) {
+    UINT8BE Kind { Kind == 0 || Kind == 1 || (Kind == 2 && SYN==1) };
+    Option(Kind) option;
+} TCPOption;
+
+typedef struct _Zero {
+  UINT8BE ZeroByte { ZeroByte == 0 };
+} Zero; 
+
+typedef struct _TCPOptionList(UINT8BE DOffset, UINT8BE SYN) where (DOffset >= 5 && DOffset <= 15) {
+  TCPOption(SYN) options[:byte-size (DOffset - 5) * 4];
+} TCPOptionList;
+
+entrypoint typedef struct _TCPHeader{
+    UINT16BE sourcePort;
+    UINT16BE destPort;
+    UINT32BE seqNumber;
+    UINT32BE ackNumber;
+    UINT8BE dataOffset: 4;
+    UINT8BE reserved: 4 { reserved == 0 };
+    UINT8BE CWR: 1;
+    UINT8BE ECE: 1;
+    UINT8BE URG: 1;
+    UINT8BE ACK: 1;
+    UINT8BE PSH: 1;
+    UINT8BE RST: 1;
+    UINT8BE SYN: 1;
+    UINT8BE FIN: 1;
+    UINT16BE WindowSize;
+    UINT16BE checksum;
+    UINT16BE urgentPointer;
+    TCPOptionList(dataOffset, SYN) options;
+    // header do not include data
+} TCPHeader;
+

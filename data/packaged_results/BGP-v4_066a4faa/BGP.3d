@@ -1,0 +1,209 @@
+// Marker struct for BGP message header
+typedef struct _Marker {
+  UINT64BE first {first == 0xFFFFFFFFFFFFFFFF};
+  UINT64BE second {second == 0xFFFFFFFFFFFFFFFF};
+} Marker;
+
+// OptionalParameter struct for BGP OPEN message
+typedef struct _OptionalParameter {
+  UINT8BE ParameterType;
+  UINT8BE ParameterLength;
+  UINT8BE ParameterValue[:byte-size ParameterLength];
+} OptionalParameter;
+
+// BGP OPEN message format
+typedef struct _OpenMessage {
+  UINT8BE Version { Version == 4 }; // Must be 4
+  UINT16BE MyAutonomousSystem;
+  UINT16BE HoldTime { HoldTime == 0 || HoldTime >= 3 }; // Must be 0 or at least 3
+  UINT32BE BGPIdentifier { BGPIdentifier != 0 };
+  UINT8BE OptionalParametersLength;
+  OptionalParameter OptionalParameters[:byte-size OptionalParametersLength];
+} OpenMessage;
+
+// Prefix tuple for Withdrawn Routes and NLRI
+// Length: bits, Prefix: enough bytes to cover Length bits
+typedef struct _Prefix {
+  UINT8BE Length { Length <= 248 }; // Ensure (Length + 7) <= 255
+  UINT8BE Prefix[:byte-size ((Length + 7) / 8)];
+} Prefix;
+
+// Path Attribute Segment for AS_PATH
+typedef struct _ASPathSegment {
+  UINT8BE SegmentType { SegmentType == 1 || SegmentType == 2 };
+  UINT8BE SegmentLength { SegmentLength <= 127 }; // Ensure 2 * SegmentLength <= 254
+  UINT16BE SegmentValue[:byte-size (2 * SegmentLength)];
+} ASPathSegment;
+
+// Path Attribute Value casetype (extended length)
+casetype _PathAttributeValueExtended(UINT8BE TypeCode, UINT16BE Length) {
+  switch(TypeCode) {
+    case 1: struct { // ORIGIN
+      UINT8BE Origin { Origin <= 2 && Length == 1 };
+    } OriginAttr;
+    case 2: struct { // AS_PATH
+      ASPathSegment Segments[:byte-size Length];
+    } ASPathAttr;
+    case 3: struct { // NEXT_HOP
+      UINT32BE NextHop { Length == 4 };
+    } NextHopAttr;
+    case 4: struct { // MULTI_EXIT_DISC
+      UINT32BE MultiExitDisc { Length == 4 };
+    } MultiExitDiscAttr;
+    case 5: struct { // LOCAL_PREF
+      UINT32BE LocalPref { Length == 4 };
+    } LocalPrefAttr;
+    case 6: struct { // ATOMIC_AGGREGATE
+      unit Empty { Length == 0 };
+    } AtomicAggregateAttr;
+    case 7: struct { // AGGREGATOR
+      UINT16BE ASNumber;
+      UINT32BE BGPSpeakerID { Length == 6 };
+    } AggregatorAttr;
+  }
+} PathAttributeValueExtended;
+
+// Path Attribute Value casetype (short length)
+casetype _PathAttributeValue(UINT8BE TypeCode, UINT8BE Length) {
+  switch(TypeCode) {
+    case 1: struct { // ORIGIN
+      UINT8BE Origin { Origin <= 2 && Length == 1};
+    } OriginAttr;
+    case 2: struct { // AS_PATH
+      ASPathSegment Segments[:byte-size Length];
+    } ASPathAttr;
+    case 3: struct { // NEXT_HOP
+      UINT32BE NextHop { Length == 4};
+    } NextHopAttr;
+    case 4: struct { // MULTI_EXIT_DISC
+      UINT32BE MultiExitDisc { Length == 4 };
+    } MultiExitDiscAttr;
+    case 5: struct { // LOCAL_PREF
+      UINT32BE LocalPref { Length == 4};
+    } LocalPrefAttr;
+    case 6: struct { // ATOMIC_AGGREGATE
+      unit Empty { Length == 0 };
+    } AtomicAggregateAttr;
+    case 7: struct { // AGGREGATOR
+      UINT16BE ASNumber;
+      UINT32BE BGPSpeakerID { Length == 6 };
+    } AggregatorAttr;
+  }
+} PathAttributeValue;
+
+// PathAttributeBody casetype
+casetype _PathAttributeBody(UINT8BE ExtendedLength, UINT8BE TypeCode) {
+  switch(ExtendedLength) {
+    case 0: struct {
+      UINT8BE Length;
+      PathAttributeValue(TypeCode, Length) Value;
+    } ShortLengthAttr;
+    case 1: struct {
+      UINT16BE Length;
+      PathAttributeValueExtended(TypeCode, Length) Value;
+    } LongLengthAttr;
+  }
+} PathAttributeBody;
+
+// Path Attribute struct
+// Always use 2 bytes for Length (Extended Length bit)
+typedef struct _PathAttribute {
+  UINT8BE Optional:1;
+  UINT8BE Transitive:1 {Optional == 1 || (Optional == 0 && Transitive==1)};
+  UINT8BE Partial:1 {Partial == 0 || (Optional == 1 && Transitive == 1 && Partial == 1)};
+  UINT8BE ExtendedLength:1;
+  UINT8BE Unused:4 {Unused == 0}; // must be zero on sent according to RFC
+  UINT8BE TypeCode {TypeCode >= 1 && TypeCode <= 7};
+  PathAttributeBody(ExtendedLength, TypeCode) Body;
+} PathAttribute;
+
+// NLRI field: variable-length list of Prefix
+typedef struct _NLRI(UINT16BE NLRI_Length) where (NLRI_Length >= 0) {
+  Prefix NLRI[:byte-size NLRI_Length];
+} NLRI;
+
+// BGP UPDATE message format
+// Not entrypoint, referenced from BGPBody
+typedef struct _UpdateMessage(UINT16BE MessageLength) where (
+  MessageLength >= 23 // Ensure MessageLength - 23 >= 0
+) {
+  UINT16BE WithdrawnRoutesLength { WithdrawnRoutesLength <= 65535 - 23 };
+  Prefix WithdrawnRoutes[:byte-size WithdrawnRoutesLength];
+  UINT16BE PathAttributesLength { PathAttributesLength <= 65535 - 23 - WithdrawnRoutesLength && MessageLength - 23 >= PathAttributesLength + WithdrawnRoutesLength };
+  PathAttribute PathAttributes[:byte-size PathAttributesLength];
+  NLRI(MessageLength - 23 - PathAttributesLength - WithdrawnRoutesLength) nlri;
+} UpdateMessage;
+
+// BGP KEEPALIVE message format
+// Only contains the message header, length must be 19 octets
+// Marker: 16 bytes, all ones (0xFF)
+// Length: 2 bytes, must be 19
+// Type: 1 byte, must be 4 (KEEPALIVE)
+typedef struct _KeepaliveMessage {
+  Marker marker;
+  UINT16BE Length { Length == 19 };
+  UINT8BE Type { Type == 4 };
+} KeepaliveMessage;
+
+// ErrorSubcode casetype for NOTIFICATION message
+casetype _ErrorSubcode(UINT8BE ErrorCode) {
+  switch(ErrorCode) {
+    case 1: struct {
+      UINT8BE ErrorSubcode { ErrorSubcode >= 1 && ErrorSubcode <= 3 };
+    } MessageHeaderErrorSubcode;
+    case 2: struct {
+      UINT8BE ErrorSubcode { (ErrorSubcode >= 1 && ErrorSubcode <= 4) || ErrorSubcode == 6 };
+    } OpenMessageErrorSubcode;
+    case 3: struct {
+      UINT8BE ErrorSubcode { (ErrorSubcode >= 1 && ErrorSubcode <= 6) || (ErrorSubcode >= 8 && ErrorSubcode <= 11) };
+    } UpdateMessageErrorSubcode;
+    case 4: struct {
+      UINT8BE ErrorSubcode { ErrorSubcode == 0 };
+    } HoldTimerExpiredSubcode;
+    case 5: struct {
+      UINT8BE ErrorSubcode { ErrorSubcode == 0 };
+    } FiniteStateMachineErrorSubcode;
+    case 6: struct {
+      UINT8BE ErrorSubcode { ErrorSubcode == 0 };
+    } CeaseSubcode;
+  }
+} ErrorSubcode;
+
+// BGP NOTIFICATION message format
+typedef struct _NotificationMessage(UINT16BE MessageLength) where (MessageLength >= 21) {
+  UINT8BE ErrorCode { ErrorCode >= 1 && ErrorCode <= 6 };
+  ErrorSubcode(ErrorCode) Subcode;
+  UINT8BE Data[:byte-size (MessageLength - 21)];
+} NotificationMessage;
+
+// MessageHeader is the entrypoint, as it is the general format for all BGP messages.
+// For Type == 1 (OPEN), the body is OpenMessage
+// For Type == 2 (UPDATE), the body is UpdateMessage
+// For Type == 3 (NOTIFICATION), the body is NotificationMessage
+// For Type == 4 (KEEPALIVE), the body is KeepaliveMessage
+casetype _BGPBody(UINT8BE Type, UINT16BE Length) {
+  switch(Type) {
+    case 1: OpenMessage OpenMsg;
+    case 2: UpdateMessage(Length) UpdateMsg;
+    case 3: NotificationMessage(Length) NotificationMsg;
+    case 4: KeepaliveMessage KeepaliveMsg;
+  }
+} BGPBody;
+
+entrypoint typedef struct _MessageHeader {
+  Marker marker;
+  UINT16BE Length { Length >= 19 && Length <= 4096 && Length == sizeof(this) };
+  UINT8BE Type { Type == 1 || Type == 2 || Type == 3 || Type == 4 };
+  unit _len_check { (Type == 1 && Length >= 29) || (Type == 2 && Length >= 23) || (Type == 3 && Length >= 21) || (Type == 4 && Length == 19) };
+  BGPBody(Type, Length) Body;
+} MessageHeader;
+
+// Comments:
+// - Marker is defined as two UINT64BE fields, each must be all ones.
+// - MessageHeader is the entrypoint, as it is the general format for all BGP messages.
+// - OpenMessage is defined for Type == 1 (OPEN), UpdateMessage for Type == 2 (UPDATE), NotificationMessage for Type == 3 (NOTIFICATION), KeepaliveMessage for Type == 4 (KEEPALIVE).
+// - OptionalParameter is used in OpenMessage for variable-length parameters.
+// - PathAttribute, NLRI, Prefix, etc. are used in UpdateMessage for UPDATE type.
+// - ErrorSubcode is used in NotificationMessage for NOTIFICATION type.
+// - No padding is defined, per RFC instructions.
+// - All message types are covered in BGPBody.

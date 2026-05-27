@@ -1,0 +1,2207 @@
+{
+    "protocol_name": "BFD",
+    "root": "4",
+    "sections": {
+        "4.2": {
+            "number": "4.2",
+            "title": "Simple Password Authentication Section Format",
+            "content": "4.2.  Simple Password Authentication Section Format\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 1 (Simple Password), the\n   Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |  Password...  |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 1 (Simple\n      Password).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Simple\n      Password authentication, the length is equal to the password\n      length plus three.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Password\n      The simple password in use on this session.  The password is a\n      binary string, and MUST be from 1 to 16 bytes in length.  The\n      password MUST be encoded and configured according to section\n      6.7.2.",
+            "summary": "This section describes the format of the Simple Password Authentication Section, detailing its fields\u2014Auth Type, Auth Len, Auth Key ID, and Password\u2014when the Authentication Present bit is set and the Authentication Type is 1.",
+            "format_path": "data/3d_syntaxs/SIMPLEPASSWORDAUTHSECTION_8d2f3b/SIMPLEPASSWORDAUTHSECTION.3d",
+            "parser_path": "data/python_parser/PARSER_03460e/PARSER.py"
+        },
+        "4.3": {
+            "number": "4.3",
+            "title": "Keyed MD5 and Meticulous Keyed MD5 Authentication Section Format",
+            "content": "4.3.  Keyed MD5 and Meticulous Keyed MD5 Authentication Section Format\n   The use of MD5-based authentication is strongly discouraged.\n   However, it is documented here for compatibility with existing\n   implementations.\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 2 (Keyed MD5) or 3 (Meticulous\n   Keyed MD5), the Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |   Reserved    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                        Sequence Number                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                      Auth Key/Digest...                       |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 2 (Keyed MD5) or 3\n      (Meticulous Keyed MD5).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Keyed MD5\n      and Meticulous Keyed MD5 authentication, the length is 24.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Reserved\n      This byte MUST be set to zero on transmit, and ignored on receipt.\n   Sequence Number\n      The sequence number for this packet.  For Keyed MD5\n      Authentication, this value is incremented occasionally.  For\n      Meticulous Keyed MD5 Authentication, this value is incremented for\n      each successive packet transmitted for a session.  This provides\n      protection against replay attacks.\n   Auth Key/Digest\n      This field carries the 16-byte MD5 digest for the packet.  When\n      the digest is calculated, the shared MD5 key is stored in this\n      field, padded to 16 bytes with trailing zero bytes if needed.  The\n      shared key MUST be encoded and configured to section 6.7.3.",
+            "summary": "This section documents the format of the Authentication Section for Keyed MD5 and Meticulous Keyed MD5, detailing each field's purpose and emphasizing that MD5-based authentication is discouraged but included for compatibility with existing implementations.",
+            "format_path": "data/3d_syntaxs/MD5AUTHSECTION_d66cb5/MD5AUTHSECTION.3d",
+            "parser_path": "data/python_parser/PARSE_PACKET_KEYED_MD5_AUTH_SECTION_75567c/PARSE_PACKET_KEYED_MD5_AUTH_SECTION.py"
+        },
+        "4.4": {
+            "number": "4.4",
+            "title": "Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section Format",
+            "content": "4.4.  Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section Format\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 4 (Keyed SHA1) or 5 (Meticulous\n   Keyed SHA1), the Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |   Reserved    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                        Sequence Number                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                       Auth Key/Hash...                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 4 (Keyed SHA1) or 5\n      (Meticulous Keyed SHA1).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Keyed\n      SHA1 and Meticulous Keyed SHA1 authentication, the length is 28.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Reserved\n      This byte MUST be set to zero on transmit and ignored on receipt.\n   Sequence Number\n      The sequence number for this packet.  For Keyed SHA1\n      Authentication, this value is incremented occasionally.  For\n      Meticulous Keyed SHA1 Authentication, this value is incremented\n      for each successive packet transmitted for a session.  This\n      provides protection against replay attacks.\n   Auth Key/Hash\n      This field carries the 20-byte SHA1 hash for the packet.  When the\n      hash is calculated, the shared SHA1 key is stored in this field,\n      padded to a length of 20 bytes with trailing zero bytes if needed.\n      The shared key MUST be encoded and configured to section 6.7.4.",
+            "summary": "This section describes the format of the Authentication Section used when the Authentication Present bit is set and the Authentication Type is Keyed SHA1 or Meticulous Keyed SHA1, detailing each field's purpose and how they provide authentication and replay protection.",
+            "format_path": "data/3d_syntaxs/SHA1AUTHSECTION_6153a7/SHA1AUTHSECTION.3d",
+            "parser_path": "data/python_parser/PARSE_PACKET_KEYED_SHA1_AUTH_SECTION_3497b1/PARSE_PACKET_KEYED_SHA1_AUTH_SECTION.py"
+        },
+        "4.1": {
+            "number": "4.1",
+            "title": "Generic BFD Control Packet Format",
+            "content": "4.1.  Generic BFD Control Packet Format\n   BFD Control packets are sent in an encapsulation appropriate to the\n   environment.  The specific encapsulation is outside of the scope of\n   this specification.  See the appropriate application document for\n   encapsulation details.\n   The BFD Control packet has a Mandatory Section and an optional\n   Authentication Section.  The format of the Authentication Section, if\n   present, is dependent on the type of authentication in use.\n   The Mandatory Section of a BFD Control packet has the following\n   format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |Vers |  Diag   |Sta|P|F|C|A|D|M|  Detect Mult  |    Length     |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                       My Discriminator                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                      Your Discriminator                       |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                    Desired Min TX Interval                    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                   Required Min RX Interval                    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                 Required Min Echo RX Interval                 |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   An optional Authentication Section MAY be present:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |    Authentication Data...     |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Version (Vers)\n      The version number of the protocol.  This document defines\n      protocol version 1.\n   Diagnostic (Diag)\n      A diagnostic code specifying the local system's reason for the\n      last change in session state.  Values are:\n         0 -- No Diagnostic\n         1 -- Control Detection Time Expired\n         2 -- Echo Function Failed\n         3 -- Neighbor Signaled Session Down\n         4 -- Forwarding Plane Reset\n         5 -- Path Down\n         6 -- Concatenated Path Down\n         7 -- Administratively Down\n         8 -- Reverse Concatenated Path Down\n      9-31 -- Reserved for future use\n      This field allows remote systems to determine the reason that the\n      previous session failed, for example.\n   State (Sta)\n      The current BFD session state as seen by the transmitting system.\n      Values are:\n         0 -- AdminDown\n         1 -- Down\n         2 -- Init\n         3 -- Up\n   Poll (P)\n      If set, the transmitting system is requesting verification of\n      connectivity, or of a parameter change, and is expecting a packet\n      with the Final (F) bit in reply.  If clear, the transmitting\n      system is not requesting verification.\n   Final (F)\n      If set, the transmitting system is responding to a received BFD\n      Control packet that had the Poll (P) bit set.  If clear, the\n      transmitting system is not responding to a Poll.\n   Control Plane Independent (C)\n      If set, the transmitting system's BFD implementation does not\n      share fate with its control plane (in other words, BFD is\n      implemented in the forwarding plane and can continue to function\n      through disruptions in the control plane).  If clear, the\n      transmitting system's BFD implementation shares fate with its\n      control plane.\n      The use of this bit is application dependent and is outside the\n      scope of this specification.  See specific application\n      specifications for details.\n   Authentication Present (A)\n      If set, the Authentication Section is present and the session is\n      to be authenticated (see section 6.7 for details).\n   Demand (D)\n      If set, Demand mode is active in the transmitting system (the\n      system wishes to operate in Demand mode, knows that the session is\n      Up in both directions, and is directing the remote system to cease\n      the periodic transmission of BFD Control packets).  If clear,\n      Demand mode is not active in the transmitting system.\n   Multipoint (M)\n      This bit is reserved for future point-to-multipoint extensions to\n      BFD.  It MUST be zero on both transmit and receipt.\n   Detect Mult\n      Detection time multiplier.  The negotiated transmit interval,\n      multiplied by this value, provides the Detection Time for the\n      receiving system in Asynchronous mode.\n   Length\n      Length of the BFD Control packet, in bytes.\n   My Discriminator\n      A unique, nonzero discriminator value generated by the\n      transmitting system, used to demultiplex multiple BFD sessions\n      between the same pair of systems.\n   Your Discriminator\n      The discriminator received from the corresponding remote system.\n      This field reflects back the received value of My Discriminator,\n      or is zero if that value is unknown.\n      If the Your Discriminator field is zero and the State field is not\n      Down or AdminDown, the packet MUST be discarded.\n   Desired Min TX Interval\n      This is the minimum interval, in microseconds, that the local\n      system would like to use when transmitting BFD Control packets,\n      less any jitter applied (see section 6.8.2).  The value zero is\n      reserved.\n   Required Min RX Interval\n      This is the minimum interval, in microseconds, between received\n      BFD Control packets that this system is capable of supporting,\n      less any jitter applied by the sender (see section 6.8.2).  If\n      this value is zero, the transmitting system does not want the\n      remote system to send any periodic BFD Control packets.\n   Required Min Echo RX Interval\n      This is the minimum interval, in microseconds, between received\n      BFD Echo packets that this system is capable of supporting, less\n      any jitter applied by the sender (see section 6.8.9).  If this\n      value is zero, the transmitting system does not support the\n      receipt of BFD Echo packets.\n   Auth Type\n      The authentication type in use, if the Authentication Present (A)\n      bit is set.\n         0 - Reserved\n         1 - Simple Password\n         2 - Keyed MD5\n         3 - Meticulous Keyed MD5\n         4 - Keyed SHA1\n         5 - Meticulous Keyed SHA1\n     6-255 - Reserved for future use\n   Auth Len\n      The length, in bytes, of the authentication section, including the\n      Auth Type and Auth Len fields.\n4.2.  Simple Password Authentication Section Format\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 1 (Simple Password), the\n   Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |  Password...  |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 1 (Simple\n      Password).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Simple\n      Password authentication, the length is equal to the password\n      length plus three.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Password\n      The simple password in use on this session.  The password is a\n      binary string, and MUST be from 1 to 16 bytes in length.  The\n      password MUST be encoded and configured according to section\n      6.7.2.\n4.3.  Keyed MD5 and Meticulous Keyed MD5 Authentication Section Format\n   The use of MD5-based authentication is strongly discouraged.\n   However, it is documented here for compatibility with existing\n   implementations.\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 2 (Keyed MD5) or 3 (Meticulous\n   Keyed MD5), the Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |   Reserved    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                        Sequence Number                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                      Auth Key/Digest...                       |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 2 (Keyed MD5) or 3\n      (Meticulous Keyed MD5).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Keyed MD5\n      and Meticulous Keyed MD5 authentication, the length is 24.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Reserved\n      This byte MUST be set to zero on transmit, and ignored on receipt.\n   Sequence Number\n      The sequence number for this packet.  For Keyed MD5\n      Authentication, this value is incremented occasionally.  For\n      Meticulous Keyed MD5 Authentication, this value is incremented for\n      each successive packet transmitted for a session.  This provides\n      protection against replay attacks.\n   Auth Key/Digest\n      This field carries the 16-byte MD5 digest for the packet.  When\n      the digest is calculated, the shared MD5 key is stored in this\n      field, padded to 16 bytes with trailing zero bytes if needed.  The\n      shared key MUST be encoded and configured to section 6.7.3.\n4.4.  Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section Format\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 4 (Keyed SHA1) or 5 (Meticulous\n   Keyed SHA1), the Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |   Reserved    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                        Sequence Number                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                       Auth Key/Hash...                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 4 (Keyed SHA1) or 5\n      (Meticulous Keyed SHA1).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Keyed\n      SHA1 and Meticulous Keyed SHA1 authentication, the length is 28.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Reserved\n      This byte MUST be set to zero on transmit and ignored on receipt.\n   Sequence Number\n      The sequence number for this packet.  For Keyed SHA1\n      Authentication, this value is incremented occasionally.  For\n      Meticulous Keyed SHA1 Authentication, this value is incremented\n      for each successive packet transmitted for a session.  This\n      provides protection against replay attacks.\n   Auth Key/Hash\n      This field carries the 20-byte SHA1 hash for the packet.  When the\n      hash is calculated, the shared SHA1 key is stored in this field,\n      padded to a length of 20 bytes with trailing zero bytes if needed.\n      The shared key MUST be encoded and configured to section 6.7.4.",
+            "summary": "This section describes the generic format of BFD Control packets, detailing the mandatory and optional authentication sections, their fields, and the purpose of each field, while specifying that encapsulation details are defined elsewhere. This section describes the format of the Simple Password Authentication Section, detailing its fields\u2014Auth Type, Auth Len, Auth Key ID, and Password\u2014when the Authentication Present bit is set and the Authentication Type is 1. This section documents the format of the Authentication Section for Keyed MD5 and Meticulous Keyed MD5, detailing each field's purpose and emphasizing that MD5-based authentication is discouraged but included for compatibility with existing implementations. This section describes the format of the Authentication Section used when the Authentication Present bit is set and the Authentication Type is Keyed SHA1 or Meticulous Keyed SHA1, detailing each field's purpose and how they provide authentication and replay protection.",
+            "format_path": "./data/3d_syntaxs/BFDCONTROL_9fa213/BFDCONTROL.3d",
+            "parser_path": "data/python_parser/MERGED_BFD_PARSER_d40d46/MERGED_BFD_PARSER.py"
+        },
+        "4": {
+            "number": "4",
+            "title": "BFD Control Packet Format",
+            "content": "4.  BFD Control Packet Format\n4.1.  Generic BFD Control Packet Format\n   BFD Control packets are sent in an encapsulation appropriate to the\n   environment.  The specific encapsulation is outside of the scope of\n   this specification.  See the appropriate application document for\n   encapsulation details.\n   The BFD Control packet has a Mandatory Section and an optional\n   Authentication Section.  The format of the Authentication Section, if\n   present, is dependent on the type of authentication in use.\n   The Mandatory Section of a BFD Control packet has the following\n   format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |Vers |  Diag   |Sta|P|F|C|A|D|M|  Detect Mult  |    Length     |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                       My Discriminator                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                      Your Discriminator                       |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                    Desired Min TX Interval                    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                   Required Min RX Interval                    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                 Required Min Echo RX Interval                 |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   An optional Authentication Section MAY be present:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |    Authentication Data...     |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Version (Vers)\n      The version number of the protocol.  This document defines\n      protocol version 1.\n   Diagnostic (Diag)\n      A diagnostic code specifying the local system's reason for the\n      last change in session state.  Values are:\n         0 -- No Diagnostic\n         1 -- Control Detection Time Expired\n         2 -- Echo Function Failed\n         3 -- Neighbor Signaled Session Down\n         4 -- Forwarding Plane Reset\n         5 -- Path Down\n         6 -- Concatenated Path Down\n         7 -- Administratively Down\n         8 -- Reverse Concatenated Path Down\n      9-31 -- Reserved for future use\n      This field allows remote systems to determine the reason that the\n      previous session failed, for example.\n   State (Sta)\n      The current BFD session state as seen by the transmitting system.\n      Values are:\n         0 -- AdminDown\n         1 -- Down\n         2 -- Init\n         3 -- Up\n   Poll (P)\n      If set, the transmitting system is requesting verification of\n      connectivity, or of a parameter change, and is expecting a packet\n      with the Final (F) bit in reply.  If clear, the transmitting\n      system is not requesting verification.\n   Final (F)\n      If set, the transmitting system is responding to a received BFD\n      Control packet that had the Poll (P) bit set.  If clear, the\n      transmitting system is not responding to a Poll.\n   Control Plane Independent (C)\n      If set, the transmitting system's BFD implementation does not\n      share fate with its control plane (in other words, BFD is\n      implemented in the forwarding plane and can continue to function\n      through disruptions in the control plane).  If clear, the\n      transmitting system's BFD implementation shares fate with its\n      control plane.\n      The use of this bit is application dependent and is outside the\n      scope of this specification.  See specific application\n      specifications for details.\n   Authentication Present (A)\n      If set, the Authentication Section is present and the session is\n      to be authenticated (see section 6.7 for details).\n   Demand (D)\n      If set, Demand mode is active in the transmitting system (the\n      system wishes to operate in Demand mode, knows that the session is\n      Up in both directions, and is directing the remote system to cease\n      the periodic transmission of BFD Control packets).  If clear,\n      Demand mode is not active in the transmitting system.\n   Multipoint (M)\n      This bit is reserved for future point-to-multipoint extensions to\n      BFD.  It MUST be zero on both transmit and receipt.\n   Detect Mult\n      Detection time multiplier.  The negotiated transmit interval,\n      multiplied by this value, provides the Detection Time for the\n      receiving system in Asynchronous mode.\n   Length\n      Length of the BFD Control packet, in bytes.\n   My Discriminator\n      A unique, nonzero discriminator value generated by the\n      transmitting system, used to demultiplex multiple BFD sessions\n      between the same pair of systems.\n   Your Discriminator\n      The discriminator received from the corresponding remote system.\n      This field reflects back the received value of My Discriminator,\n      or is zero if that value is unknown.\n      If the Your Discriminator field is zero and the State field is not\n      Down or AdminDown, the packet MUST be discarded.\n   Desired Min TX Interval\n      This is the minimum interval, in microseconds, that the local\n      system would like to use when transmitting BFD Control packets,\n      less any jitter applied (see section 6.8.2).  The value zero is\n      reserved.\n   Required Min RX Interval\n      This is the minimum interval, in microseconds, between received\n      BFD Control packets that this system is capable of supporting,\n      less any jitter applied by the sender (see section 6.8.2).  If\n      this value is zero, the transmitting system does not want the\n      remote system to send any periodic BFD Control packets.\n   Required Min Echo RX Interval\n      This is the minimum interval, in microseconds, between received\n      BFD Echo packets that this system is capable of supporting, less\n      any jitter applied by the sender (see section 6.8.9).  If this\n      value is zero, the transmitting system does not support the\n      receipt of BFD Echo packets.\n   Auth Type\n      The authentication type in use, if the Authentication Present (A)\n      bit is set.\n         0 - Reserved\n         1 - Simple Password\n         2 - Keyed MD5\n         3 - Meticulous Keyed MD5\n         4 - Keyed SHA1\n         5 - Meticulous Keyed SHA1\n     6-255 - Reserved for future use\n   Auth Len\n      The length, in bytes, of the authentication section, including the\n      Auth Type and Auth Len fields.\n4.2.  Simple Password Authentication Section Format\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 1 (Simple Password), the\n   Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |  Password...  |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 1 (Simple\n      Password).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Simple\n      Password authentication, the length is equal to the password\n      length plus three.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Password\n      The simple password in use on this session.  The password is a\n      binary string, and MUST be from 1 to 16 bytes in length.  The\n      password MUST be encoded and configured according to section\n      6.7.2.\n4.3.  Keyed MD5 and Meticulous Keyed MD5 Authentication Section Format\n   The use of MD5-based authentication is strongly discouraged.\n   However, it is documented here for compatibility with existing\n   implementations.\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 2 (Keyed MD5) or 3 (Meticulous\n   Keyed MD5), the Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |   Reserved    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                        Sequence Number                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                      Auth Key/Digest...                       |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 2 (Keyed MD5) or 3\n      (Meticulous Keyed MD5).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Keyed MD5\n      and Meticulous Keyed MD5 authentication, the length is 24.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Reserved\n      This byte MUST be set to zero on transmit, and ignored on receipt.\n   Sequence Number\n      The sequence number for this packet.  For Keyed MD5\n      Authentication, this value is incremented occasionally.  For\n      Meticulous Keyed MD5 Authentication, this value is incremented for\n      each successive packet transmitted for a session.  This provides\n      protection against replay attacks.\n   Auth Key/Digest\n      This field carries the 16-byte MD5 digest for the packet.  When\n      the digest is calculated, the shared MD5 key is stored in this\n      field, padded to 16 bytes with trailing zero bytes if needed.  The\n      shared key MUST be encoded and configured to section 6.7.3.\n4.4.  Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section Format\n   If the Authentication Present (A) bit is set in the header, and the\n   Authentication Type field contains 4 (Keyed SHA1) or 5 (Meticulous\n   Keyed SHA1), the Authentication Section has the following format:\n    0                   1                   2                   3\n    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |   Auth Type   |   Auth Len    |  Auth Key ID  |   Reserved    |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                        Sequence Number                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                       Auth Key/Hash...                        |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   |                              ...                              |\n   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n   Auth Type\n      The Authentication Type, which in this case is 4 (Keyed SHA1) or 5\n      (Meticulous Keyed SHA1).\n   Auth Len\n      The length of the Authentication Section, in bytes.  For Keyed\n      SHA1 and Meticulous Keyed SHA1 authentication, the length is 28.\n   Auth Key ID\n      The authentication key ID in use for this packet.  This allows\n      multiple keys to be active simultaneously.\n   Reserved\n      This byte MUST be set to zero on transmit and ignored on receipt.\n   Sequence Number\n      The sequence number for this packet.  For Keyed SHA1\n      Authentication, this value is incremented occasionally.  For\n      Meticulous Keyed SHA1 Authentication, this value is incremented\n      for each successive packet transmitted for a session.  This\n      provides protection against replay attacks.\n   Auth Key/Hash\n      This field carries the 20-byte SHA1 hash for the packet.  When the\n      hash is calculated, the shared SHA1 key is stored in this field,\n      padded to a length of 20 bytes with trailing zero bytes if needed.\n      The shared key MUST be encoded and configured to section 6.7.4.",
+            "summary": "This section describes the generic format of BFD Control packets, detailing the mandatory and optional authentication sections, their fields, and the purpose of each field, while specifying that encapsulation details are defined elsewhere. This section describes the format of the Simple Password Authentication Section, detailing its fields\u2014Auth Type, Auth Len, Auth Key ID, and Password\u2014when the Authentication Present bit is set and the Authentication Type is 1. This section documents the format of the Authentication Section for Keyed MD5 and Meticulous Keyed MD5, detailing each field's purpose and emphasizing that MD5-based authentication is discouraged but included for compatibility with existing implementations. This section describes the format of the Authentication Section used when the Authentication Present bit is set and the Authentication Type is Keyed SHA1 or Meticulous Keyed SHA1, detailing each field's purpose and how they provide authentication and replay protection.",
+            "format_path": "data/3d_syntaxs/BFD_CONTROL_47fb80/BFD_CONTROL.3d",
+            "parser_path": "data/python_parser/MERGED_BFD_PARSER_d40d46/MERGED_BFD_PARSER.py"
+        }
+    },
+    "parent_of": {
+        "4.1": "4",
+        "4.2": "4.1",
+        "4.3": "4.1",
+        "4.4": "4.1"
+    },
+    "children_of": {
+        "4": [
+            "4.1"
+        ],
+        "4.1": [
+            "4.2",
+            "4.3",
+            "4.4"
+        ]
+    },
+    "name_to_section_3d": {
+        "SimplePasswordAuthSection": {
+            "4.1": [
+                [
+                    7,
+                    16
+                ],
+                [
+                    7,
+                    16
+                ],
+                [
+                    15,
+                    3
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    53,
+                    13
+                ]
+            ],
+            "4.2": [
+                [
+                    7,
+                    16
+                ],
+                [
+                    7,
+                    16
+                ],
+                [
+                    15,
+                    3
+                ]
+            ],
+            "4": [
+                [
+                    8,
+                    16
+                ],
+                [
+                    8,
+                    16
+                ],
+                [
+                    53,
+                    13
+                ]
+            ]
+        },
+        "AuthType": {
+            "4.1": [
+                [
+                    8,
+                    3
+                ],
+                [
+                    16,
+                    18
+                ],
+                [
+                    8,
+                    10
+                ],
+                [
+                    7,
+                    27
+                ],
+                [
+                    27,
+                    19
+                ],
+                [
+                    9,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    8,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    16,
+                    18
+                ]
+            ],
+            "4.4": [
+                [
+                    8,
+                    10
+                ],
+                [
+                    7,
+                    27
+                ],
+                [
+                    27,
+                    19
+                ]
+            ],
+            "4": [
+                [
+                    9,
+                    3
+                ]
+            ]
+        },
+        "AuthLen": {
+            "4.1": [
+                [
+                    9,
+                    3
+                ],
+                [
+                    8,
+                    3
+                ],
+                [
+                    10,
+                    7
+                ],
+                [
+                    17,
+                    7
+                ],
+                [
+                    10,
+                    3
+                ],
+                [
+                    22,
+                    3
+                ],
+                [
+                    34,
+                    7
+                ],
+                [
+                    41,
+                    7
+                ]
+            ],
+            "4.2": [
+                [
+                    9,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    8,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    10,
+                    7
+                ],
+                [
+                    17,
+                    7
+                ]
+            ],
+            "4": [
+                [
+                    10,
+                    3
+                ],
+                [
+                    22,
+                    3
+                ],
+                [
+                    34,
+                    7
+                ],
+                [
+                    41,
+                    7
+                ]
+            ]
+        },
+        "AuthKeyID": {
+            "4.1": [
+                [
+                    10,
+                    3
+                ],
+                [
+                    9,
+                    3
+                ],
+                [
+                    11,
+                    7
+                ],
+                [
+                    18,
+                    7
+                ],
+                [
+                    11,
+                    3
+                ],
+                [
+                    23,
+                    3
+                ],
+                [
+                    35,
+                    7
+                ],
+                [
+                    42,
+                    7
+                ]
+            ],
+            "4.2": [
+                [
+                    10,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    9,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    11,
+                    7
+                ],
+                [
+                    18,
+                    7
+                ]
+            ],
+            "4": [
+                [
+                    11,
+                    3
+                ],
+                [
+                    23,
+                    3
+                ],
+                [
+                    35,
+                    7
+                ],
+                [
+                    42,
+                    7
+                ]
+            ]
+        },
+        "Password": {
+            "4.1": [
+                [
+                    11,
+                    3
+                ],
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    11,
+                    3
+                ]
+            ],
+            "4": [
+                [
+                    12,
+                    3
+                ]
+            ]
+        },
+        "SimplePasswordAuthEntry": {
+            "4.1": [
+                [
+                    14,
+                    27
+                ],
+                [
+                    14,
+                    27
+                ]
+            ],
+            "4.2": [
+                [
+                    14,
+                    27
+                ],
+                [
+                    14,
+                    27
+                ]
+            ]
+        },
+        "section": {
+            "4.1": [
+                [
+                    15,
+                    3
+                ]
+            ],
+            "4.2": [
+                [
+                    15,
+                    3
+                ]
+            ]
+        },
+        "MD5AuthSection": {
+            "4.1": [
+                [
+                    7,
+                    16
+                ],
+                [
+                    7,
+                    16
+                ],
+                [
+                    16,
+                    3
+                ],
+                [
+                    21,
+                    16
+                ],
+                [
+                    21,
+                    16
+                ],
+                [
+                    54,
+                    13
+                ],
+                [
+                    55,
+                    13
+                ]
+            ],
+            "4.3": [
+                [
+                    7,
+                    16
+                ],
+                [
+                    7,
+                    16
+                ],
+                [
+                    16,
+                    3
+                ]
+            ],
+            "4": [
+                [
+                    21,
+                    16
+                ],
+                [
+                    21,
+                    16
+                ],
+                [
+                    54,
+                    13
+                ],
+                [
+                    55,
+                    13
+                ]
+            ]
+        },
+        "Reserved": {
+            "4.1": [
+                [
+                    10,
+                    3
+                ],
+                [
+                    12,
+                    7
+                ],
+                [
+                    19,
+                    7
+                ],
+                [
+                    24,
+                    3
+                ],
+                [
+                    36,
+                    7
+                ],
+                [
+                    43,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    10,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    12,
+                    7
+                ],
+                [
+                    19,
+                    7
+                ]
+            ],
+            "4": [
+                [
+                    24,
+                    3
+                ],
+                [
+                    36,
+                    7
+                ],
+                [
+                    43,
+                    7
+                ]
+            ]
+        },
+        "SequenceNumber": {
+            "4.1": [
+                [
+                    11,
+                    3
+                ],
+                [
+                    13,
+                    7
+                ],
+                [
+                    20,
+                    7
+                ],
+                [
+                    25,
+                    3
+                ],
+                [
+                    37,
+                    7
+                ],
+                [
+                    44,
+                    7
+                ]
+            ],
+            "4.3": [
+                [
+                    11,
+                    3
+                ]
+            ],
+            "4.4": [
+                [
+                    13,
+                    7
+                ],
+                [
+                    20,
+                    7
+                ]
+            ],
+            "4": [
+                [
+                    25,
+                    3
+                ],
+                [
+                    37,
+                    7
+                ],
+                [
+                    44,
+                    7
+                ]
+            ]
+        },
+        "AuthKeyDigest": {
+            "4.1": [
+                [
+                    12,
+                    3
+                ],
+                [
+                    26,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    12,
+                    3
+                ]
+            ],
+            "4": [
+                [
+                    26,
+                    3
+                ]
+            ]
+        },
+        "MD5AuthEntry": {
+            "4.1": [
+                [
+                    15,
+                    27
+                ],
+                [
+                    15,
+                    27
+                ]
+            ],
+            "4.3": [
+                [
+                    15,
+                    27
+                ],
+                [
+                    15,
+                    27
+                ]
+            ]
+        },
+        "md5AuthSection": {
+            "4.1": [
+                [
+                    16,
+                    3
+                ]
+            ],
+            "4.3": [
+                [
+                    16,
+                    3
+                ]
+            ]
+        },
+        "_SHA1AuthSection": {
+            "4.1": [
+                [
+                    7,
+                    10
+                ],
+                [
+                    7,
+                    10
+                ],
+                [
+                    31,
+                    10
+                ],
+                [
+                    31,
+                    10
+                ]
+            ],
+            "4.4": [
+                [
+                    7,
+                    10
+                ],
+                [
+                    7,
+                    10
+                ]
+            ],
+            "4": [
+                [
+                    31,
+                    10
+                ],
+                [
+                    31,
+                    10
+                ]
+            ]
+        },
+        "KeyedSHA1": {
+            "4.1": [
+                [
+                    9,
+                    20
+                ],
+                [
+                    33,
+                    20
+                ]
+            ],
+            "4.4": [
+                [
+                    9,
+                    20
+                ]
+            ],
+            "4": [
+                [
+                    33,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-ebf0>": {
+            "4.1": [
+                [
+                    9,
+                    20
+                ]
+            ],
+            "4.4": [
+                [
+                    9,
+                    20
+                ]
+            ]
+        },
+        "AuthKeyHash": {
+            "4.1": [
+                [
+                    14,
+                    7
+                ],
+                [
+                    21,
+                    7
+                ],
+                [
+                    38,
+                    7
+                ],
+                [
+                    45,
+                    7
+                ]
+            ],
+            "4.4": [
+                [
+                    14,
+                    7
+                ],
+                [
+                    21,
+                    7
+                ]
+            ],
+            "4": [
+                [
+                    38,
+                    7
+                ],
+                [
+                    45,
+                    7
+                ]
+            ]
+        },
+        "MeticulousKeyedSHA1": {
+            "4.1": [
+                [
+                    16,
+                    20
+                ],
+                [
+                    40,
+                    20
+                ]
+            ],
+            "4.4": [
+                [
+                    16,
+                    20
+                ]
+            ],
+            "4": [
+                [
+                    40,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-d503>": {
+            "4.1": [
+                [
+                    16,
+                    20
+                ]
+            ],
+            "4.4": [
+                [
+                    16,
+                    20
+                ]
+            ]
+        },
+        "SHA1AuthEntry": {
+            "4.1": [
+                [
+                    26,
+                    27
+                ],
+                [
+                    26,
+                    27
+                ]
+            ],
+            "4.4": [
+                [
+                    26,
+                    27
+                ],
+                [
+                    26,
+                    27
+                ]
+            ]
+        },
+        "AuthSection": {
+            "4.1": [
+                [
+                    27,
+                    3
+                ],
+                [
+                    67,
+                    7
+                ]
+            ],
+            "4.4": [
+                [
+                    27,
+                    3
+                ]
+            ],
+            "4": [
+                [
+                    67,
+                    7
+                ]
+            ]
+        },
+        "SHA1AuthSection": {
+            "4.1": [
+                [
+                    27,
+                    3
+                ],
+                [
+                    56,
+                    13
+                ],
+                [
+                    57,
+                    13
+                ]
+            ],
+            "4.4": [
+                [
+                    27,
+                    3
+                ]
+            ],
+            "4": [
+                [
+                    56,
+                    13
+                ],
+                [
+                    57,
+                    13
+                ]
+            ]
+        },
+        "sha1_type": {
+            "4": [
+                [
+                    32,
+                    10
+                ],
+                [
+                    31,
+                    27
+                ]
+            ],
+            "4.1": [
+                [
+                    32,
+                    10
+                ],
+                [
+                    31,
+                    27
+                ]
+            ]
+        },
+        "<anoymous-1e59>": {
+            "4": [
+                [
+                    33,
+                    20
+                ]
+            ],
+            "4.1": [
+                [
+                    33,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-8cf7>": {
+            "4": [
+                [
+                    40,
+                    20
+                ]
+            ],
+            "4.1": [
+                [
+                    40,
+                    20
+                ]
+            ]
+        },
+        "_AuthSection": {
+            "4": [
+                [
+                    51,
+                    10
+                ],
+                [
+                    51,
+                    10
+                ]
+            ],
+            "4.1": [
+                [
+                    51,
+                    10
+                ],
+                [
+                    51,
+                    10
+                ]
+            ]
+        },
+        "auth_type": {
+            "4": [
+                [
+                    52,
+                    10
+                ],
+                [
+                    51,
+                    23
+                ],
+                [
+                    54,
+                    28
+                ],
+                [
+                    55,
+                    28
+                ],
+                [
+                    56,
+                    29
+                ],
+                [
+                    57,
+                    29
+                ],
+                [
+                    66,
+                    7
+                ],
+                [
+                    67,
+                    19
+                ]
+            ],
+            "4.1": [
+                [
+                    52,
+                    10
+                ],
+                [
+                    51,
+                    23
+                ],
+                [
+                    54,
+                    28
+                ],
+                [
+                    55,
+                    28
+                ],
+                [
+                    56,
+                    29
+                ],
+                [
+                    57,
+                    29
+                ],
+                [
+                    66,
+                    7
+                ],
+                [
+                    67,
+                    19
+                ]
+            ]
+        },
+        "SimplePassword": {
+            "4": [
+                [
+                    53,
+                    13
+                ]
+            ],
+            "4.1": [
+                [
+                    53,
+                    13
+                ]
+            ]
+        },
+        "KeyedMD5Auth": {
+            "4": [
+                [
+                    54,
+                    13
+                ]
+            ],
+            "4.1": [
+                [
+                    54,
+                    13
+                ]
+            ]
+        },
+        "MeticulousMD5Auth": {
+            "4": [
+                [
+                    55,
+                    13
+                ]
+            ],
+            "4.1": [
+                [
+                    55,
+                    13
+                ]
+            ]
+        },
+        "SHA1Auth": {
+            "4": [
+                [
+                    56,
+                    13
+                ]
+            ],
+            "4.1": [
+                [
+                    56,
+                    13
+                ]
+            ]
+        },
+        "MeticulousSHA1Auth": {
+            "4": [
+                [
+                    57,
+                    13
+                ]
+            ],
+            "4.1": [
+                [
+                    57,
+                    13
+                ]
+            ]
+        },
+        "_AuthPresent": {
+            "4": [
+                [
+                    62,
+                    10
+                ],
+                [
+                    62,
+                    10
+                ]
+            ],
+            "4.1": [
+                [
+                    62,
+                    10
+                ],
+                [
+                    62,
+                    10
+                ]
+            ]
+        },
+        "A": {
+            "4": [
+                [
+                    63,
+                    10
+                ],
+                [
+                    62,
+                    23
+                ],
+                [
+                    80,
+                    3
+                ],
+                [
+                    90,
+                    15
+                ]
+            ],
+            "4.1": [
+                [
+                    63,
+                    10
+                ],
+                [
+                    62,
+                    23
+                ],
+                [
+                    80,
+                    3
+                ],
+                [
+                    90,
+                    15
+                ]
+            ]
+        },
+        "Empty": {
+            "4": [
+                [
+                    64,
+                    13
+                ]
+            ],
+            "4.1": [
+                [
+                    64,
+                    13
+                ]
+            ]
+        },
+        "Auth": {
+            "4": [
+                [
+                    65,
+                    20
+                ]
+            ],
+            "4.1": [
+                [
+                    65,
+                    20
+                ]
+            ]
+        },
+        "<anoymous-fdb3>": {
+            "4": [
+                [
+                    65,
+                    20
+                ]
+            ],
+            "4.1": [
+                [
+                    65,
+                    20
+                ]
+            ]
+        },
+        "authSection": {
+            "4": [
+                [
+                    67,
+                    7
+                ]
+            ],
+            "4.1": [
+                [
+                    67,
+                    7
+                ]
+            ]
+        },
+        "BFDControl": {
+            "4": [
+                [
+                    73,
+                    27
+                ],
+                [
+                    73,
+                    27
+                ]
+            ],
+            "4.1": [
+                [
+                    73,
+                    27
+                ],
+                [
+                    73,
+                    27
+                ]
+            ]
+        },
+        "Vers": {
+            "4": [
+                [
+                    74,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    74,
+                    3
+                ]
+            ]
+        },
+        "Diag": {
+            "4": [
+                [
+                    75,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    75,
+                    3
+                ]
+            ]
+        },
+        "Sta": {
+            "4": [
+                [
+                    76,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    76,
+                    3
+                ]
+            ]
+        },
+        "P": {
+            "4": [
+                [
+                    77,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    77,
+                    3
+                ]
+            ]
+        },
+        "F": {
+            "4": [
+                [
+                    78,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    78,
+                    3
+                ]
+            ]
+        },
+        "C": {
+            "4": [
+                [
+                    79,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    79,
+                    3
+                ]
+            ]
+        },
+        "D": {
+            "4": [
+                [
+                    81,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    81,
+                    3
+                ]
+            ]
+        },
+        "M": {
+            "4": [
+                [
+                    82,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    82,
+                    3
+                ]
+            ]
+        },
+        "DetectMult": {
+            "4": [
+                [
+                    83,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    83,
+                    3
+                ]
+            ]
+        },
+        "Length": {
+            "4": [
+                [
+                    84,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    84,
+                    3
+                ]
+            ]
+        },
+        "MyDiscriminator": {
+            "4": [
+                [
+                    85,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    85,
+                    3
+                ]
+            ]
+        },
+        "YourDiscriminator": {
+            "4": [
+                [
+                    86,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    86,
+                    3
+                ]
+            ]
+        },
+        "DesiredMinTxInterval": {
+            "4": [
+                [
+                    87,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    87,
+                    3
+                ]
+            ]
+        },
+        "RequiredMinRxInterval": {
+            "4": [
+                [
+                    88,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    88,
+                    3
+                ]
+            ]
+        },
+        "RequiredMinEchoRxInterval": {
+            "4": [
+                [
+                    89,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    89,
+                    3
+                ]
+            ]
+        },
+        "authPresent": {
+            "4": [
+                [
+                    90,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    90,
+                    3
+                ]
+            ]
+        },
+        "AuthPresent": {
+            "4": [
+                [
+                    90,
+                    3
+                ]
+            ],
+            "4.1": [
+                [
+                    90,
+                    3
+                ]
+            ]
+        }
+    },
+    "name_to_section_py": {
+        "length:36": "4.1",
+        "my_discriminator:63": "4.1",
+        "reserved:366": "4.1",
+        "auth_key_id:316": "4.1",
+        "auth_type:249": "4.1",
+        "result:267": "4.1",
+        "sta:28": "4.1",
+        "auth_digest:254": "4.1",
+        "remaining_bytes:141": "4.1",
+        "auth_key_id:199": "4.1",
+        "desired_min_tx_interval:77": "4.1",
+        "current_result:231": "4.1",
+        "current_result:345": "4.1",
+        "password:218": "4.1",
+        "auth_len:93": "4.1",
+        "remaining_input:231": "4.1",
+        "a_flag:32": "4.1",
+        "result:333": "4.1",
+        "remaining_input:176": "4.1",
+        "reserved:252": "4.1",
+        "detect_mult:35": "4.1",
+        "remaining_input:279": "4.1",
+        "remaining_bytes:117": "4.1",
+        "remaining_input:345": "4.1",
+        "auth_type:363": "4.1",
+        "reserved:317": "4.1",
+        "auth_len:103": "4.1",
+        "remaining_input:296": "4.1",
+        "parse_packet_bfd_control_packet:1": "4.1",
+        "second_byte:27": "4.1",
+        "auth_len:364": "4.1",
+        "password_length:214": "4.1",
+        "remaining_input:1": "4.1",
+        "auth_len:198": "4.1",
+        "parse_packet_meticulous_keyed_md5_auth_section:279": "4.1",
+        "auth_len:315": "4.1",
+        "main:394": "4.1",
+        "sequence_number:318": "4.1",
+        "remaining_bytes:342": "4.1",
+        "current_result:279": "4.1",
+        "remaining_bytes:219": "4.1",
+        "m_flag:34": "4.1",
+        "current_result:1": "4.1",
+        "auth_key_hash:368": "4.1",
+        "auth_key_id:365": "4.1",
+        "data:398": "4.1",
+        "f_flag:30": "4.1",
+        "remaining_bytes:133": "4.1",
+        "result:146": "4.1",
+        "required_min_echo_rx_interval:79": "4.1",
+        "auth_key_hash:319": "4.1",
+        "required_min_rx_interval:78": "4.1",
+        "remaining_bytes:276": "4.1",
+        "sequence_number:367": "4.1",
+        "auth_key_id:251": "4.1",
+        "remaining_bytes:125": "4.1",
+        "auth_type:314": "4.1",
+        "current_result:176": "4.1",
+        "result:221": "4.1",
+        "auth_type:197": "4.1",
+        "auth_len:250": "4.1",
+        "parse_packet_keyed_md5_auth_section:231": "4.1",
+        "your_discriminator:64": "4.1",
+        "result:382": "4.1",
+        "sequence_number:253": "4.1",
+        "parse_packet_meticulous_keyed_sha1_auth_section:345": "4.1",
+        "vers:23": "4.1",
+        "parse_packet_simple_password_auth_section:176": "4.1",
+        "remaining_bytes:391": "4.1",
+        "d_flag:33": "4.1",
+        "auth_section:91": "4.1",
+        "first_byte:22": "4.1",
+        "p_flag:29": "4.1",
+        "current_result:296": "4.1",
+        "auth_type:92": "4.1",
+        "diag:24": "4.1",
+        "c_flag:31": "4.1",
+        "remaining_bytes:88": "4.1",
+        "parse_packet_keyed_sha1_auth_section:296": "4.1",
+        "auth_type:102": "4.1",
+        "main:57": "4.2",
+        "parse_packet_simple_password_auth_section:1": "4.2",
+        "password_length:39": "4.2",
+        "password:43": "4.2",
+        "data:61": "4.2",
+        "remaining_bytes:44": "4.2",
+        "auth_len:23": "4.2",
+        "auth_key_id:24": "4.2",
+        "auth_type:22": "4.2",
+        "result:46": "4.2",
+        "result:37": "4.3",
+        "auth_digest:24": "4.3",
+        "remaining_bytes:46": "4.3",
+        "main:49": "4.3",
+        "auth_key_id:21": "4.3",
+        "reserved:22": "4.3",
+        "sequence_number:23": "4.3",
+        "parse_packet_keyed_md5_auth_section:1": "4.3",
+        "data:53": "4.3",
+        "auth_type:19": "4.3",
+        "auth_len:20": "4.3",
+        "auth_key_id:70": "4.4",
+        "auth_key_hash:24": "4.4",
+        "remaining_input:50": "4.4",
+        "auth_type:107": "4.4",
+        "auth_len:69": "4.4",
+        "auth_key_hash:73": "4.4",
+        "sequence_number:72": "4.4",
+        "parse_packet_meticulous_keyed_sha1_auth_section:50": "4.4",
+        "remaining_bytes:47": "4.4",
+        "result:87": "4.4",
+        "reserved:71": "4.4",
+        "result:38": "4.4",
+        "auth_type:68": "4.4",
+        "main:99": "4.4",
+        "remaining_bytes:96": "4.4",
+        "data:103": "4.4",
+        "result:108": "4.4",
+        "current_result:50": "4.4",
+        "parse_packet_keyed_sha1_auth_section:1": "4.4"
+    },
+    "line_to_element_py": {
+        "1": [
+            "4.4",
+            [
+                "current_result",
+                "remaining_input",
+                "parse_packet_bfd_control_packet"
+            ]
+        ],
+        "22": [
+            "4.4",
+            [
+                "first_byte"
+            ]
+        ],
+        "23": [
+            "4.4",
+            [
+                "vers"
+            ]
+        ],
+        "24": [
+            "4.4",
+            [
+                "diag"
+            ]
+        ],
+        "39": [
+            "4.2",
+            [
+                "password_length"
+            ]
+        ],
+        "43": [
+            "4.2",
+            [
+                "password"
+            ]
+        ],
+        "44": [
+            "4.2",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "46": [
+            "4.3",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "57": [
+            "4.2",
+            [
+                "main"
+            ]
+        ],
+        "61": [
+            "4.2",
+            [
+                "data"
+            ]
+        ],
+        "27": [
+            "4.1",
+            [
+                "second_byte"
+            ]
+        ],
+        "28": [
+            "4.1",
+            [
+                "sta"
+            ]
+        ],
+        "29": [
+            "4.1",
+            [
+                "p_flag"
+            ]
+        ],
+        "30": [
+            "4.1",
+            [
+                "f_flag"
+            ]
+        ],
+        "31": [
+            "4.1",
+            [
+                "c_flag"
+            ]
+        ],
+        "32": [
+            "4.1",
+            [
+                "a_flag"
+            ]
+        ],
+        "33": [
+            "4.1",
+            [
+                "d_flag"
+            ]
+        ],
+        "34": [
+            "4.1",
+            [
+                "m_flag"
+            ]
+        ],
+        "35": [
+            "4.1",
+            [
+                "detect_mult"
+            ]
+        ],
+        "36": [
+            "4.1",
+            [
+                "length"
+            ]
+        ],
+        "63": [
+            "4.1",
+            [
+                "my_discriminator"
+            ]
+        ],
+        "64": [
+            "4.1",
+            [
+                "your_discriminator"
+            ]
+        ],
+        "77": [
+            "4.1",
+            [
+                "desired_min_tx_interval"
+            ]
+        ],
+        "78": [
+            "4.1",
+            [
+                "required_min_rx_interval"
+            ]
+        ],
+        "79": [
+            "4.1",
+            [
+                "required_min_echo_rx_interval"
+            ]
+        ],
+        "88": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "91": [
+            "4.1",
+            [
+                "auth_section"
+            ]
+        ],
+        "92": [
+            "4.1",
+            [
+                "auth_type"
+            ]
+        ],
+        "93": [
+            "4.1",
+            [
+                "auth_len"
+            ]
+        ],
+        "102": [
+            "4.1",
+            [
+                "auth_type"
+            ]
+        ],
+        "103": [
+            "4.4",
+            [
+                "auth_len"
+            ]
+        ],
+        "117": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "125": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "133": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "141": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "146": [
+            "4.1",
+            [
+                "result"
+            ]
+        ],
+        "176": [
+            "4.1",
+            [
+                "current_result",
+                "remaining_input",
+                "parse_packet_simple_password_auth_section"
+            ]
+        ],
+        "197": [
+            "4.1",
+            [
+                "auth_type"
+            ]
+        ],
+        "198": [
+            "4.1",
+            [
+                "auth_len"
+            ]
+        ],
+        "199": [
+            "4.1",
+            [
+                "auth_key_id"
+            ]
+        ],
+        "214": [
+            "4.1",
+            [
+                "password_length"
+            ]
+        ],
+        "218": [
+            "4.1",
+            [
+                "password"
+            ]
+        ],
+        "219": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "221": [
+            "4.1",
+            [
+                "result"
+            ]
+        ],
+        "231": [
+            "4.1",
+            [
+                "parse_packet_keyed_md5_auth_section",
+                "current_result",
+                "remaining_input"
+            ]
+        ],
+        "249": [
+            "4.1",
+            [
+                "auth_type"
+            ]
+        ],
+        "250": [
+            "4.1",
+            [
+                "auth_len"
+            ]
+        ],
+        "251": [
+            "4.1",
+            [
+                "auth_key_id"
+            ]
+        ],
+        "252": [
+            "4.1",
+            [
+                "reserved"
+            ]
+        ],
+        "253": [
+            "4.1",
+            [
+                "sequence_number"
+            ]
+        ],
+        "254": [
+            "4.1",
+            [
+                "auth_digest"
+            ]
+        ],
+        "267": [
+            "4.1",
+            [
+                "result"
+            ]
+        ],
+        "276": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "279": [
+            "4.1",
+            [
+                "parse_packet_meticulous_keyed_md5_auth_section",
+                "remaining_input",
+                "current_result"
+            ]
+        ],
+        "296": [
+            "4.1",
+            [
+                "current_result",
+                "parse_packet_keyed_sha1_auth_section",
+                "remaining_input"
+            ]
+        ],
+        "314": [
+            "4.1",
+            [
+                "auth_type"
+            ]
+        ],
+        "315": [
+            "4.1",
+            [
+                "auth_len"
+            ]
+        ],
+        "316": [
+            "4.1",
+            [
+                "auth_key_id"
+            ]
+        ],
+        "317": [
+            "4.1",
+            [
+                "reserved"
+            ]
+        ],
+        "318": [
+            "4.1",
+            [
+                "sequence_number"
+            ]
+        ],
+        "319": [
+            "4.1",
+            [
+                "auth_key_hash"
+            ]
+        ],
+        "333": [
+            "4.1",
+            [
+                "result"
+            ]
+        ],
+        "342": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "345": [
+            "4.1",
+            [
+                "parse_packet_meticulous_keyed_sha1_auth_section",
+                "remaining_input",
+                "current_result"
+            ]
+        ],
+        "363": [
+            "4.1",
+            [
+                "auth_type"
+            ]
+        ],
+        "364": [
+            "4.1",
+            [
+                "auth_len"
+            ]
+        ],
+        "365": [
+            "4.1",
+            [
+                "auth_key_id"
+            ]
+        ],
+        "366": [
+            "4.1",
+            [
+                "reserved"
+            ]
+        ],
+        "367": [
+            "4.1",
+            [
+                "sequence_number"
+            ]
+        ],
+        "368": [
+            "4.1",
+            [
+                "auth_key_hash"
+            ]
+        ],
+        "382": [
+            "4.1",
+            [
+                "result"
+            ]
+        ],
+        "391": [
+            "4.1",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "394": [
+            "4.1",
+            [
+                "main"
+            ]
+        ],
+        "398": [
+            "4.1",
+            [
+                "data"
+            ]
+        ],
+        "19": [
+            "4.4",
+            [
+                "auth_type"
+            ]
+        ],
+        "20": [
+            "4.4",
+            [
+                "auth_len"
+            ]
+        ],
+        "21": [
+            "4.4",
+            [
+                "auth_key_id"
+            ]
+        ],
+        "37": [
+            "4.3",
+            [
+                "result"
+            ]
+        ],
+        "49": [
+            "4.3",
+            [
+                "main"
+            ]
+        ],
+        "53": [
+            "4.3",
+            [
+                "data"
+            ]
+        ],
+        "38": [
+            "4.4",
+            [
+                "result"
+            ]
+        ],
+        "47": [
+            "4.4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "50": [
+            "4.4",
+            [
+                "parse_packet_meticulous_keyed_sha1_auth_section",
+                "remaining_input",
+                "current_result"
+            ]
+        ],
+        "68": [
+            "4.4",
+            [
+                "auth_type"
+            ]
+        ],
+        "69": [
+            "4.4",
+            [
+                "auth_len"
+            ]
+        ],
+        "70": [
+            "4.4",
+            [
+                "auth_key_id"
+            ]
+        ],
+        "71": [
+            "4.4",
+            [
+                "reserved"
+            ]
+        ],
+        "72": [
+            "4.4",
+            [
+                "sequence_number"
+            ]
+        ],
+        "73": [
+            "4.4",
+            [
+                "auth_key_hash"
+            ]
+        ],
+        "87": [
+            "4.4",
+            [
+                "result"
+            ]
+        ],
+        "96": [
+            "4.4",
+            [
+                "remaining_bytes"
+            ]
+        ],
+        "99": [
+            "4.4",
+            [
+                "main"
+            ]
+        ],
+        "107": [
+            "4.4",
+            [
+                "auth_type"
+            ]
+        ],
+        "108": [
+            "4.4",
+            [
+                "result"
+            ]
+        ]
+    },
+    "py_function_scope": {
+        "parse_packet_simple_password_auth_section": [
+            "4.2",
+            [
+                176,
+                229
+            ]
+        ],
+        "main": [
+            "4.4",
+            [
+                394,
+                406
+            ]
+        ],
+        "parse_packet_bfd_control_packet": [
+            "4.1",
+            [
+                1,
+                174
+            ]
+        ],
+        "parse_packet_keyed_md5_auth_section": [
+            "4.3",
+            [
+                231,
+                277
+            ]
+        ],
+        "parse_packet_meticulous_keyed_md5_auth_section": [
+            "4.1",
+            [
+                279,
+                294
+            ]
+        ],
+        "parse_packet_keyed_sha1_auth_section": [
+            "4.4",
+            [
+                296,
+                343
+            ]
+        ],
+        "parse_packet_meticulous_keyed_sha1_auth_section": [
+            "4.4",
+            [
+                345,
+                392
+            ]
+        ]
+    }
+}

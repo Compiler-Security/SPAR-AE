@@ -1,0 +1,76 @@
+typedef struct _DestUnreachable {
+    UINT8BE Code { Code >= 0 && Code <= 5 };
+    UINT16BE Checksum;
+    UINT32BE Unused { Unused == 0 };
+}DestUnreachable;
+
+typedef struct _TimeExceeded {
+    UINT8BE Code { Code == 0 || Code == 1 };
+    UINT16BE Checksum;
+    UINT32BE Unused { Unused == 0 };
+}TimeExceeded;
+
+typedef struct _ParameterProblem {
+    UINT8BE Code { Code == 0 };
+    UINT16BE Checksum;
+    UINT32BE Pointer: 8;
+    UINT32BE Reserved: 24 { Reserved == 0 };
+}ParameterProblem;
+
+typedef struct _SourceQuench {
+    UINT8BE Code { Code == 0 };
+    UINT16BE Checksum;
+    UINT32BE Unused { Unused == 0 };
+}SourceQuench;
+
+typedef struct _Redirect {
+    UINT8BE Code { Code >= 0 && Code <= 3 };
+    UINT16BE Checksum;
+    UINT32BE GatewayInternetAddress;
+}Redirect;
+
+typedef struct _Echo {
+    UINT8BE Code { Code == 0 };
+    UINT16BE Checksum;
+    UINT16BE Identifier;
+    UINT16BE SequenceNumber;
+    // Data field is omitted
+}Echo;
+
+typedef struct _TimeStamp {
+    UINT8BE Code { Code == 0 };
+    UINT16BE Checksum;
+    UINT16BE Identifier;
+    UINT16BE SequenceNumber;
+    UINT32BE OriginateTimestamp;
+    UINT32BE ReceiveTimestamp;
+    UINT32BE TransmitTimestamp;
+}TimeStamp;
+
+typedef struct _InformationRequest {
+    UINT8BE Code { Code == 0 };
+    UINT16BE Checksum;
+    UINT16BE Identifier;
+    UINT16BE SequenceNumber;
+}InformationRequest;  
+
+casetype _ICMPMessageVariant(UINT8BE Type) {
+    switch(Type) {
+        case 0: Echo echo;
+        case 3: DestUnreachable destUnreachable;
+        case 4: SourceQuench sourceQuench;
+        case 5: Redirect redirect;
+        case 8: Echo echo;
+        case 11: TimeExceeded timeExceeded;
+        case 12: ParameterProblem parameterProblem;
+        case 13: TimeStamp timeStamp;
+        case 14: TimeStamp timeStamp;
+        case 15: InformationRequest informationRequest;
+        case 16: InformationRequest informationRequest;
+    }
+} ICMPMessageVariant;
+
+entrypoint typedef struct _ICMPMessage {
+  UINT8BE Type;
+  ICMPMessageVariant(Type) message;
+} ICMPMessage;

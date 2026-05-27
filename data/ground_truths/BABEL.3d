@@ -1,0 +1,193 @@
+typedef struct _Pad1(UINT8BE Type) where (Type == 0 || Type == 127) {
+  unit Empty;
+} Pad1;
+
+typedef struct _Zero {
+  UINT8BE Zero { Zero == 0 };
+} Zero;
+
+typedef struct _PadN(UINT8BE Type) where (Type == 1 || Type == 128) {
+  UINT8BE Length; // Length of padding, no constraints needed, since it is used for MBZ's size
+  Zero MBZ[:byte-size Length]; // this way we ensure all bytes are zero
+} PadN;
+
+casetype _SubTLVVariaint(UINT8BE Type) {
+  switch (Type) {
+    case 0: Pad1(Type) Pad1Value;
+    case 1: PadN(Type) PadNValue;
+    case 127: Pad1(Type) Pad1Value; // 0 with high bit set
+    case 128: PadN(Type) PadNValue; // 1 with high bit set
+  }
+} SubTLVVariaint;
+
+typedef struct _SubTLV {
+  UINT8BE Type {Type == 0 || Type == 1 || Type == 127 || Type == 128};
+  SubTLVVariaint(Type) Value;
+} SubTLV;
+
+typedef struct _AcknowledgementRequest(UINT8BE Type) where (Type == 2) {
+  UINT8BE Length { Length >= 6 }; // Acknowledgement length must great equals 6, since it is self-trermined and allows sub-TLVs
+  UINT16BE Reserved { Reserved == 0 }; // Must be zero
+  UINT16BE Opaque; // Opaque value, arbitrary so no constraints
+  UINT16BE Interval { Interval != 0 }; // Interval must be non-zero
+  SubTLV SubTLVs[:byte-size (Length - 6)]; // Sub-TLVs
+} AcknowledgementRequest;
+
+typedef struct _Acknowedgement(UINT8BE Type) where (Type == 3) {
+  UINT8BE Length { Length >= 2 }; // Acknowledgement length must great equals 2, to allow Opaque field
+  UINT16BE Opaque; // Opaque value, arbitrary so no constraints
+  SubTLV SubTLVs[:byte-size (Length - 2)]; // Sub-TLVs
+} Acknowledgement;
+
+typedef struct _Hello(UINT8BE Type) where (Type == 4) {
+  UINT8BE Length { Length >= 6 }; // Hello length must great equals 6, to allow fixed fields
+  UINT16BE Unicast: 1;
+  UINT16BE Reserved: 15 { Reserved == 0 }; // Must be zero
+  UINT16BE Seqno;
+  UINT16BE Interval;
+  SubTLV SubTLVs[:byte-size (Length - 6)]; // Sub
+} Hello;
+
+casetype _AddressEncoding(UINT8BE AE) {
+  switch (AE) {
+    case 0: unit Empty; // No address
+    case 1: struct{ UINT32BE IPv4Address;}IPv4Addr; // IPv4 address
+    case 2: struct{ UINT8BE IPv6Address[16];}IPv6Addr; // IPv6 address
+    case 3: struct {
+      UINT64BE InterfaceIdentifier; // Interface Identifier, as prefix is implied
+    }IPv6LinkLocalAddress;
+  }
+} AddressEncoding;
+
+casetype _IHUSubTLV(UINT8BE AE, UINT8BE Length) {
+  switch (AE) {
+    case 0: struct {
+      unit Empty { Length >= 6 }; // No address, so Sub-TLVs start after 6 bytes
+      SubTLV SubTLVs[:byte-size Length - 6];
+    }SubAE0;
+    case 1: struct {
+      unit Empty { Length >= 10 }; // IPv4 address, so Sub-TLVs start after 10 bytes
+      SubTLV SubTLVs[:byte-size Length - 10];
+    }SubAE1;
+    case 2: struct {
+      unit Empty { Length >= 22 }; // IPv6 address, so Sub-TLVs start after 22 bytes
+      SubTLV SubTLVs[:byte-size Length - 22];
+    }SubAE2;
+    case 3: struct {
+      unit Empty { Length >= 14 }; // Local IPv6 address, so Sub-TLVs start after 14 bytes
+      SubTLV SubTLVs[:byte-size Length - 14];
+    }SubAE3;
+  }
+} IHUSubTLV;
+
+typedef struct _IHU(UINT8BE Type) where (Type == 5) {
+  UINT8BE Length { Length >= 6 }; // IHU length must great equals minimum based on address encoding
+  UINT8BE AE { AE >= 0 && AE <= 3 && ((AE == 0 && Length >= 6) || (AE == 1 && Length >= 10) || (AE >= 2 && Length >= 22)) }; // AE must be between 0 and 3
+  UINT8BE Reserved { Reserved == 0 }; // Must be zero
+  UINT16BE Rxcost;
+  UINT16BE Interval {Interval != 0};
+  AddressEncoding(AE) Address; // Address
+  IHUSubTLV(AE, Length) SubTLVs; // Sub-TLVs
+} IHU;
+
+typedef struct _RouterId(UINT8BE Type) where (Type == 6) {
+  UINT8BE Length { Length >= 10 }; // RouterId length must great equals 10, to allow fixed fields
+  UINT16BE Reserved { Reserved == 0 }; // Must be zero
+  UINT64BE RouterId { RouterId != 0 && RouterId != 0xFFFFFFFFFFFFFFFF }; // RouterId must be non-zero and not all-ones
+  SubTLV SubTLVs[:byte-size (Length - 10)]; // Sub-TLVs
+} RouterId;
+
+casetype _NextHopSubTLV(UINT8BE AE, UINT8BE Length) {
+  switch (AE) {
+    case 1: struct {
+      unit Empty { Length >= 6 }; // IPv4 address, so Sub-TLVs start after 6 bytes
+      SubTLV SubTLVs[:byte-size Length - 6];
+    }SubAE1;
+    case 3: struct {
+      unit Empty { Length >= 14 }; // IPv6 link-local address, so Sub-TLVs start after 13 bytes
+      SubTLV SubTLVs[:byte-size Length - 14];
+    } SubAE3;
+  }
+} NextHopSubTLV;
+
+typedef struct _NextHop(UINT8BE Type) where (Type == 7) {
+  UINT8BE Length;
+  UINT8BE AE { AE == 1 || AE == 3 }; // AE must be 1 or 3
+  UINT8BE Reserved { Reserved == 0 }; // Must be zero
+  AddressEncoding(AE) NextHopAddress; // NextHop Address
+  NextHopSubTLV(AE, Length) SubTLVs; // Sub-TLVs
+} NextHop;
+
+typedef struct _Update(UINT8BE Type) where (Type == 8) {
+  UINT8BE Length;
+  UINT8BE AE { AE >= 0 && AE <= 3 };
+  UINT8BE P: 1;
+  UINT8BE R: 1;
+  UINT8BE Reserved: 6 { Reserved == 0 }; // Must be zero
+  UINT8BE Plen { Plen <= 248 }; 
+  UINT8BE Omitted { (AE == 3 && Omitted == 0) || (AE != 3 && Omitted <= ((Plen + 7) / 8)) }; // Omitted must be zero if AE is 3
+  UINT16BE Interval {Interval != 0 }; // Interval must be non-zero
+  UINT16BE Seqno;
+  UINT16BE Metric { (Metric != 0xFFFF && AE != 0) || (Metric == 0xFFFF && (AE != 0 || (AE == 0 && Plen == 0 && Omitted == 0))) }; // Metric constraints
+  // This field's size is (Plen/8 - Omitted) rounded upwards
+  UINT8BE Prefix[:byte-size (Plen + 7) / 8 - Omitted];
+  unit Empty { Length >= 10 + ((Plen + 7) / 8 - Omitted) }; // Ensure Length is sufficient for fixed fields and Prefix
+  SubTLV SubTLVs[:byte-size (Length - (10 + ((Plen + 7) / 8 - Omitted)))]; // Sub-TLVs
+} Update;
+
+typedef struct _RouteRequest(UINT8BE Type) where (Type == 9) {
+  UINT8BE Length;
+  UINT8BE AE { AE >= 0 && AE <= 3 };
+  UINT8BE Plen { Plen <= 248 && (( Plen == 0 && AE == 0) || AE != 0) };
+  UINT8BE Prefix[:byte-size (Plen + 7) / 8];
+  unit Empty { Length >= (2 + (Plen + 7) / 8) }; // Ensure Length is sufficient for fixed fields and Prefix
+  SubTLV SubTLVs[:byte-size (Length - (2 + (Plen + 7) / 8))]; // Sub-TLVs
+} RouteRequest;
+
+typedef struct _SeqnoRequest(UINT8BE Type) where (Type == 10) {
+  UINT8BE Length;
+  UINT8BE AE { AE > 0 && AE <= 3 };
+  UINT8BE Plen { Plen <= 248 };
+  UINT16BE Seqno;
+  UINT8BE HopCount { HopCount != 0 };
+  UINT8BE Reserved { Reserved == 0 };
+  UINT64BE RouterID { RouterID != 0 && RouterID != 0xFFFFFFFFFFFFFFFF }; // RouterId must be non-zero and not all-ones
+  UINT8BE Prefix[:byte-size (Plen + 7) / 8];
+  unit Empty { Length >= (14 + (Plen + 7) / 8) }; // Ensure Length is sufficient for fixed fields and Prefix
+  SubTLV SubTLVs[:byte-size (Length - (14 + (Plen + 7) / 8))]; // Sub-TLVs
+} SeqnoRequest;
+
+casetype _TLVVariaint(UINT8BE Type) {
+  switch (Type) {
+    case 0: Pad1(Type) Pad1Value;
+    case 1: PadN(Type) PadNValue;
+    case 2: AcknowledgementRequest(Type) AcknowledgementRequestValue;
+    case 3: Acknowledgement(Type) AcknowledgementValue;
+    case 4: Hello(Type) HelloValue;
+    case 5: IHU(Type) IHUValue;
+    case 6: RouterId(Type) RouterIdValue;
+    case 7: NextHop(Type) NextHopValue;
+    case 8: Update(Type) UpdateValue;
+    case 9: RouteRequest(Type) RouteRequestValue;
+    case 10: SeqnoRequest(Type) SeqnoRequestValue;
+  }
+} TLVVariaint;
+
+typedef struct _TLV {
+  UINT8BE Type {Type >= 0 && Type <= 10};
+  TLVVariaint(Type) Value;
+} TLV;
+
+typedef struct _TLVTrailer {
+  UINT8BE Type { Type == 1 || Type == 0 }; // Only Pad1 and PadN allowed in trailer
+  TLVVariaint(Type) Value;
+} TLVTrailer;
+
+entrypoint typedef struct _BABELPacket(UINT16BE total_length) where (total_length >= 4) {
+  UINT8BE Magic { Magic == 42 }; // Must be 42
+  UINT8BE Version { Version == 2 }; // Must be 2
+  UINT16BE BodyLength { BodyLength <= total_length - 4 }; // Body length must fit in packet
+  TLV PacketBody[:byte-size BodyLength]; // TLVs
+  TLVTrailer PacketTrailer[:byte-size (total_length - 4 - BodyLength)]; // TLVs
+} BABELPacket;
+

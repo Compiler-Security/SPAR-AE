@@ -1,0 +1,74 @@
+casetype _AuthPayload(UINT8BE AuthType) {
+  switch (AuthType) {
+  case 1:
+    struct {
+      UINT8BE AuthLen{AuthLen >= 4 && AuthLen <= 19};
+      UINT8BE AuthKeyID;
+      UINT8BE Password[:byte-size(AuthLen - 3)];
+    } SimplePassword;
+  case 2:
+    struct {
+      UINT8BE AuthLen{AuthLen == 24};
+      UINT8BE KeyID;
+      UINT8BE Reserved{Reserved == 0};
+      UINT32BE SeqNumber;
+      UINT8BE AuthDigest[:byte-size 16];
+    } KeyedMD5;
+  case 3:
+    struct {
+      UINT8BE AuthLen{AuthLen == 24};
+      UINT8BE KeyID;
+      UINT8BE Reserved{Reserved == 0};
+      UINT32BE SeqNumber;
+      UINT8BE AuthDigest[:byte-size 16];
+    } MeticulousKeyedMD5;
+  case 4:
+    struct {
+      UINT8BE AuthLen{AuthLen == 28};
+      UINT8BE KeyID;
+      UINT8BE Reserved{Reserved == 0};
+      UINT32BE SeqNumber;
+      UINT8BE AuthDigest[:byte-size 20];
+    } KeyedSHA1;
+  case 5:
+    struct {
+      UINT8BE AuthLen{AuthLen == 28};
+      UINT8BE KeyID;
+      UINT8BE Reserved{Reserved == 0};
+      UINT32BE SeqNumber;
+      UINT8BE AuthDigest[:byte-size 20];
+    } MeticulousKeyedSHA1;
+  }
+}AuthPayload;
+
+casetype _OptionalAuth(UINT8BE A) {
+  switch (A) {
+  case 0:
+    unit Empty;
+  case 1:
+    struct {
+      UINT8BE AuthType{AuthType >= 1 && AuthType <= 5};
+      AuthPayload(AuthType) authPayload;
+    } AuthField;
+  }
+}OptionalAuth;
+
+entrypoint typedef struct _BFDControlPacket {
+  UINT8BE Vers : 3 {Vers == 1};
+  UINT8BE Diag : 5 {Diag >= 0 && Diag <= 8};
+  UINT8BE Sta : 2;
+  UINT8BE P : 1;
+  UINT8BE F : 1;
+  UINT8BE C : 1;
+  UINT8BE A : 1;
+  UINT8BE D : 1;
+  UINT8BE M : 1 {M == 0};
+  UINT8BE Detect_Mult;
+  UINT8BE Length{ Length == sizeof(this) };
+  UINT32BE My_Discriminator{My_Discriminator != 0};
+  UINT32BE Your_Discriminator { (Your_Discriminator != 0) || (Sta == 0 || Sta == 1) };
+  UINT32BE Desired_Min_TX_Interval{Desired_Min_TX_Interval != 0};
+  UINT32BE Required_Min_RX_Interval;
+  UINT32BE Required_Min_Echo_RX_Interval;
+  OptionalAuth(A) authField;
+} BFDControlPacket;

@@ -1,0 +1,175 @@
+typedef struct _DNSLabel {
+  UINT8BE Length { Length <= 63 && Length > 0 };
+  UINT8BE Label[:byte-size Length];
+} DNSLabel;
+
+typedef struct _CharacterStringBody(UINT8BE Length) where (Length == sizeof(this)) {
+  UINT8BE Value[:byte-size Length];
+} CharacterStringBody;
+
+typedef struct _LastDNSLabel {
+  UINT8BE Length { Length == 0 };
+} LastDNSLabel;
+
+typedef struct _QName{
+  // QName consists of multiple labels ending with a zero-length label, but there is not any explicit count field. Another issue is 3d does not support arrays with struct type elements, and you can only use byte size. Here we just define one label and one last zero-length label. In actual parsing, you need to parse multiple labels until you reach the last zero-length label.
+  DNSLabel label;
+  LastDNSLabel lastLabel;
+} QName;
+
+typedef struct Question {
+  QName QNAME;
+  UINT16BE QTYPE;
+  UINT16BE QCLASS;
+} Question;
+
+
+casetype _RData(UINT16BE Type, UINT16BE Class, UINT16BE RDLENGTH) {
+  switch (Type) {
+    case 1: // a host address
+      struct {
+        UINT32BE Address { Class == 1 }; // only IN class
+      } ARecord;
+    case 2: // NS
+      struct {
+        QName NSDNAME;
+      } NSRecord;
+    case 3: // MD 
+      struct {
+        QName MNAME;
+      } MDRecord;
+    case 4: // MF
+      struct {
+        QName MNAME;
+      } MFRecord;
+    case 5: // CNAME
+      struct {
+        QName CNAME;
+      } CNAMERecord;
+    case 6: // SOA
+      struct {
+        QName MNAME;
+        QName RNAME;
+        UINT32BE SERIAL;
+        UINT32BE REFRESH;
+        UINT32BE RETRY;
+        UINT32BE EXPIRE;
+        UINT32BE MINIMUM;
+      } SOARecord;
+    case 7: // MB
+      struct {
+        QName MADNAME;
+      } MBRecord;
+    case 8: // MG
+      struct {
+        QName MGNAME;
+      } MGRecord;
+    case 9: // MR
+      struct {
+        QName MRNAME;
+      } MRRecord;
+    case 10: // NULL
+      struct {
+        UINT8BE Data[:byte-size RDLENGTH];
+      } NULLRecord;
+    case 11: // WKS
+      struct {
+        UINT32BE ADDRESS { Class == 1 }; // only IN class
+        UINT8BE PROTOCOL {RDLENGTH >= 5};
+        UINT8BE BITMAP[:byte-size RDLENGTH - 5];
+      } WKSRecord;
+    case 12: // PTR 
+      struct {
+        QName PTRDNAME;
+      } PTRRecord;
+    case 13: // HINFO
+      struct {
+        UINT8BE CPU_LENGTH { RDLENGTH >= CPU_LENGTH && RDLENGTH - CPU_LENGTH >= 1 };
+        UINT8BE CPU[:byte-size CPU_LENGTH];
+        UINT8BE OS_LENGTH { RDLENGTH >= OS_LENGTH && RDLENGTH - OS_LENGTH >= CPU_LENGTH && RDLENGTH - CPU_LENGTH - OS_LENGTH == 2 };
+        UINT8BE OS[:byte-size OS_LENGTH];
+      } HINFORecord;
+    case 14: // MINFO
+      struct {
+        QName RMAILBX;
+        QName EMAILBX;
+      } MINFORecord;
+    case 15: // MX
+      struct {
+        UINT16BE PREFERENCE;
+        QName EXCHANGE;
+      } MXRecord;
+    case 16: // TXT
+      struct {
+        UINT8BE TXT_LENGTH { RDLENGTH >= 1 && TXT_LENGTH == RDLENGTH - 1 };
+        UINT8BE TXT_DATA[:byte-size TXT_LENGTH]; // just define one string here due to the same reason as QName
+      } TXTRecord;
+  }
+} RData;
+
+typedef struct _RDataStruct(UINT16BE Type, UINT16BE Class, UINT16BE RDLENGTH) where (RDLENGTH == sizeof(this)) {
+  _RData(Type, Class, RDLENGTH) rdata;
+} RDataStruct;
+
+typedef struct _DNSResourceRecord {
+  QName NAME;
+  UINT16BE TYPE { TYPE >= 1 && TYPE <= 16 };
+  UINT16BE CLASS { CLASS >= 1 && CLASS <= 4 };
+  UINT32BE TTL;
+  UINT16BE RDLENGTH;
+  RDataStruct(TYPE, CLASS, RDLENGTH) RDATA;
+} DNSResourceRecord;
+
+
+casetype _QuestionPresent(UINT16BE QDCount) {
+    switch(QDCount) {
+        case 0: unit Empty;
+        case 1: Question question;
+    }
+} QuestionPresent;
+
+casetype _AnswerPresent(UINT16BE ANCount){
+    switch(ANCount) {
+        case 0: unit Empty;
+        case 1: DNSResourceRecord resourceRecord;
+    }
+} AnswerPresent;
+
+casetype _AuthorityPresent(UINT16BE NSCount) {
+    switch(NSCount) {
+        case 0: unit Empty;
+        case 1: DNSResourceRecord resourceRecord;
+    }
+} AuthorityPresent;
+
+casetype _AdditionalPresent(UINT16BE ARCount) {
+    switch(ARCount) {
+        case 0: unit Empty;
+        case 1: DNSResourceRecord resourceRecord;
+    }
+} AdditionalPresent;
+
+typedef struct _DNSQuestions(UINT16BE QDCount) where (QDCount <= 1) {
+  // Similar to QName, here we just define one question. In actual parsing, you need to parse multiple questions based on QDCount.
+  QuestionPresent(QDCount) questionPresent;
+} DNSQuestions;
+
+entrypoint typedef struct _DNSMessage {
+  UINT16BE ID;
+  UINT16BE QR: 1;
+  UINT16BE Opcode: 4 { Opcode >= 0 && Opcode <= 2 };
+  UINT16BE AA: 1;
+  UINT16BE TC: 1;
+  UINT16BE RD: 1;
+  UINT16BE RA: 1;
+  UINT16BE Z: 3 { Z == 0 };
+  UINT16BE RCode: 4 { RCode >= 0 && RCode <= 5 };
+  UINT16BE QDCount;
+  UINT16BE ANCount;
+  UINT16BE NSCount;
+  UINT16BE ARCount;
+  DNSQuestions(QDCount) questions;
+  AnswerPresent(ANCount) answerPresent;
+  AuthorityPresent(NSCount) authorityPresent;
+  AdditionalPresent(ARCount) additionalPresent;
+} DNSMessage;

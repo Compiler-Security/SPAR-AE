@@ -1,0 +1,90 @@
+// Merged BFD Control and Authentication Sections
+// Simple Password Authentication Section
+// Auth Type: 1 (Simple Password)
+// Auth Len: password length + 3, so must be between 4 and 19 (password 1..16 bytes)
+// Auth Key ID: 1 byte
+// Password: 1..16 bytes
+
+typedef struct _SimplePasswordAuthSection(UINT8BE auth_type) where (auth_type == 1) {
+  UINT8BE AuthLen { AuthLen >= 4 && AuthLen <= 19 };
+  UINT8BE AuthKeyID;
+  UINT8BE Password[:byte-size (AuthLen - 3)];
+} SimplePasswordAuthSection;
+
+// Unified MD5 Authentication Section for both Keyed and Meticulous Keyed MD5
+// AuthType must be 2 or 3
+// AuthLen must be 24
+// Reserved must be zero
+// AuthKeyDigest is 16 bytes
+
+typedef struct _MD5AuthSection(UINT8BE AuthType) where (AuthType == 2 || AuthType == 3) {
+  UINT8BE AuthLen { AuthLen == 24 };
+  UINT8BE AuthKeyID;
+  UINT8BE Reserved { Reserved == 0 };
+  UINT32BE SequenceNumber;
+  UINT8BE AuthKeyDigest[16];
+} MD5AuthSection;
+
+// Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section
+// Use the more concrete definition from Snippet 2 (no AuthType field inside, only in wrapper)
+casetype _SHA1AuthSection(UINT8BE sha1_type) {
+  switch(sha1_type) {
+    case 4: struct {
+      UINT8BE AuthLen { AuthLen == 28 };
+      UINT8BE AuthKeyID;
+      UINT8BE Reserved { Reserved == 0 };
+      UINT32BE SequenceNumber;
+      UINT8BE AuthKeyHash[20];
+    } KeyedSHA1;
+    case 5: struct {
+      UINT8BE AuthLen { AuthLen == 28 };
+      UINT8BE AuthKeyID;
+      UINT8BE Reserved { Reserved == 0 };
+      UINT32BE SequenceNumber;
+      UINT8BE AuthKeyHash[20];
+    } MeticulousKeyedSHA1;
+  }
+} SHA1AuthSection;
+
+// Authentication Section wrapper
+casetype _AuthSection(UINT8BE auth_type) {
+  switch(auth_type) {
+    case 1: SimplePasswordAuthSection(auth_type) SimplePassword;
+    case 2: MD5AuthSection(auth_type) KeyedMD5Auth;
+    case 3: MD5AuthSection(auth_type) MeticulousMD5Auth;
+    case 4: SHA1AuthSection(auth_type) SHA1Auth;
+    case 5: SHA1AuthSection(auth_type) MeticulousSHA1Auth;
+  }
+} AuthSection;
+
+// Authentication Present wrapper
+casetype _AuthPresent(UINT8BE A) {
+  switch(A) {
+    case 0: unit Empty;
+    case 1: struct {
+      UINT8BE auth_type { auth_type >= 1 && auth_type <= 5 };
+      AuthSection(auth_type) authSection;
+    } Auth;
+  }
+} AuthPresent;
+
+// Main BFD Control Packet
+entrypoint typedef struct _BFDControl {
+  UINT8BE Vers:3 { Vers == 1 };
+  UINT8BE Diag:5 { Diag <= 8 };
+  UINT8BE Sta:2 { Sta <= 3 };
+  UINT8BE P:1;
+  UINT8BE F:1;
+  UINT8BE C:1;
+  UINT8BE A:1;
+  UINT8BE D:1;
+  UINT8BE M:1 { M == 0 };
+  UINT8BE DetectMult;
+  UINT8BE Length { Length >= 24 && Length == sizeof(this) };
+  UINT32BE MyDiscriminator { MyDiscriminator != 0 };
+  UINT32BE YourDiscriminator { (Sta <= 1) || (YourDiscriminator != 0) };
+  UINT32BE DesiredMinTxInterval { DesiredMinTxInterval != 0 };
+  UINT32BE RequiredMinRxInterval;
+  UINT32BE RequiredMinEchoRxInterval;
+  AuthPresent(A) authPresent;
+} BFDControl;
