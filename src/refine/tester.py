@@ -685,7 +685,7 @@ class Tester(StepLogger):
             except EncoderError:
               continue
       self.log_info(f"Total format seeds generated: {len(format_seeds)}")
-      return TestResult(TestResultType.SKIP, dummy_detail)
+      # return TestResult(TestResultType.SKIP, dummy_detail)
       # use hybrid fuzzer to generate more testcases from format seeds
       from src.hybrid_fuzz.fuzz import HybridFuzzer
 
